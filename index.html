@@ -1,0 +1,1773 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Hair Studios – Barber Shop</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#1a1a18" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Hair Studios" />
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Jost:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        oklch(99%  0.005 90);
+      --bg2:       oklch(97%  0.006 90);
+      --bg3:       oklch(94%  0.007 90);
+      --ink:       oklch(10%  0.005 90);
+      --ink2:      oklch(38%  0.008 90);
+      --ink3:      oklch(60%  0.006 90);
+      --gold:      oklch(72%  0.12  85);
+      --gold-dim:  oklch(82%  0.08  85);
+      --gold-bg:   oklch(97%  0.04  85);
+      --border:    oklch(88%  0.007 90);
+      --radius:    16px;
+      --radius-sm: 10px;
+      --shadow:    0 2px 16px oklch(10% 0.005 90 / 0.07);
+      --shadow-md: 0 4px 28px oklch(10% 0.005 90 / 0.12);
+    }
+
+    html { height: 100%; }
+    body {
+      height: 100%;
+      background: var(--bg);
+      font-family: 'Jost', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #root {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      max-width: 480px;
+      margin: 0 auto;
+      background: var(--bg);
+    }
+
+    h1,h2,h3,h4 { font-family: 'Cormorant Garamond', serif; }
+    button { cursor: pointer; border: none; background: none; font-family: 'Jost', sans-serif; }
+    input, select, textarea { font-family: 'Jost', sans-serif; }
+
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .screen {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    .bottom-nav {
+      height: 64px;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 8px env(safe-area-inset-bottom, 8px);
+      flex-shrink: 0;
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 3px;
+      padding: 6px 4px; border-radius: var(--radius-sm);
+      transition: background 0.15s;
+    }
+    .nav-item:hover { background: var(--bg2); }
+    .nav-item.active .nav-icon { color: var(--gold); }
+    .nav-item.active .nav-label { color: var(--ink); font-weight: 600; }
+    .nav-icon  { font-size: 19px; color: var(--ink3); transition: color 0.15s; }
+    .nav-label { font-size: 10px; color: var(--ink3); font-weight: 500; letter-spacing: 0.3px; }
+
+    .scroll-content { flex: 1; overflow-y: auto; overflow-x: hidden; }
+
+    .btn-primary  { background: var(--ink); color: var(--bg); padding: 16px 24px; border-radius: var(--radius-sm); font-family: 'Cormorant Garamond', serif; font-size: 15px; font-weight: 700; width: 100%; letter-spacing: 0.3px; transition: transform 0.12s, box-shadow 0.12s; }
+    .btn-primary:hover  { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-secondary { background: var(--bg2); color: var(--ink); padding: 14px 24px; border-radius: var(--radius-sm); font-family: 'Cormorant Garamond', serif; font-size: 14px; font-weight: 600; width: 100%; border: 1px solid var(--border); transition: background 0.15s; }
+    .btn-secondary:hover { background: var(--bg3); }
+    .btn-gold { background: var(--gold); color: white; padding: 16px 24px; border-radius: var(--radius-sm); font-family: 'Cormorant Garamond', serif; font-size: 15px; font-weight: 700; width: 100%; transition: transform 0.12s, box-shadow 0.12s; }
+    .btn-gold:hover { transform: translateY(-1px); box-shadow: 0 4px 20px oklch(72% 0.12 85 / 0.35); }
+    .btn-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--bg2); color: var(--ink); transition: background 0.15s; font-size: 18px; flex-shrink: 0; }
+    .btn-icon:hover { background: var(--bg3); }
+
+    .input-group { display: flex; flex-direction: column; gap: 6px; }
+    .input-label { font-size: 12px; font-weight: 600; color: var(--ink2); letter-spacing: 0.5px; text-transform: uppercase; }
+    .input-field { background: var(--bg2); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 13px 16px; font-size: 15px; color: var(--ink); outline: none; transition: border-color 0.15s, box-shadow 0.15s; width: 100%; }
+    .input-field:focus { border-color: var(--ink); box-shadow: 0 0 0 3px oklch(10% 0.005 90 / 0.06); }
+    .input-field::placeholder { color: var(--ink3); }
+
+    .card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+    .card-dark { background: var(--ink); border-radius: var(--radius); padding: 24px; color: var(--bg); }
+
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px; }
+    .badge-gold  { background: var(--gold-bg);                    color: var(--gold); }
+    .badge-green { background: oklch(95% 0.05 145);               color: oklch(40% 0.12 145); }
+    .badge-red   { background: oklch(97% 0.04 20);                color: oklch(45% 0.18 25); }
+    .badge-gray  { background: var(--bg3);                        color: var(--ink2); }
+
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .section-title  { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 700; color: var(--ink); }
+    .section-link   { font-size: 13px; color: var(--gold); font-weight: 600; }
+
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+    .avatar { border-radius: 50%; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-family: 'Cormorant Garamond', serif; font-weight: 700; color: var(--ink); overflow: hidden; flex-shrink: 0; }
+
+    .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 12px 20px; border-radius: 99px; font-size: 13px; font-weight: 500; white-space: nowrap; z-index: 999; animation: toast-in 0.3s ease; box-shadow: var(--shadow-md); }
+    @keyframes toast-in { from { opacity:0; transform: translateX(-50%) translateY(10px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+
+    .chip { display: inline-flex; align-items: center; padding: 8px 16px; border-radius: 99px; font-size: 13px; font-weight: 500; border: 1.5px solid var(--border); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .chip.selected { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+    .chip:not(.selected):hover { border-color: var(--ink2); }
+
+    .step-indicator { display: flex; gap: 6px; align-items: center; justify-content: center; }
+    .step-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); transition: all 0.2s; }
+    .step-dot.active { width: 20px; border-radius: 3px; background: var(--ink); }
+    .step-dot.done   { background: var(--gold); }
+
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--ink); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 50; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+</script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ── SUPABASE CONFIG ─────────────────────────────────────────────
+// Sostituisci con le tue credenziali da supabase.com → Project Settings → API
+const SUPABASE_URL      = 'https://pzdnvygxnosmxrjfjvsv.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6ZG52eWd4bm9zbXhyamZqdnN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNjM2NDksImV4cCI6MjA5MzYzOTY0OX0.oCH4wdzQdY1wCH_LqUFFbAkw0kWpPVLMtpPWE5D2Cd8';
+
+const CONFIG_READY = SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20;
+const supabase = CONFIG_READY
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+// ── COSTANTI ────────────────────────────────────────────────────
+const DAYS_SHORT = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+const DAYS_ABBR  = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+const DAYS_FULL  = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'];
+const MONTHS     = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+const DEFAULT_SCHEDULE = { start:'08:00', end:'20:00', days:[true,true,true,true,true,true,false], breaks:[] };
+
+const ROLE_OPTIONS  = ['Senior Barber','Barber','Titolare','Apprendista'];
+const COLOR_OPTIONS = [
+  { label:'Blu',     value:'oklch(65% 0.14 240)' },
+  { label:'Arancio', value:'oklch(65% 0.14 20)'  },
+  { label:'Verde',   value:'oklch(58% 0.14 145)'  },
+  { label:'Viola',   value:'oklch(60% 0.16 300)'  },
+  { label:'Oro',     value:'oklch(65% 0.13 80)'   },
+];
+
+const getWeekDates = (offset = 0) => {
+  const now = new Date();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+  return Array.from({length:7}, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+};
+
+const TODAY = () => new Date().toISOString().split('T')[0];
+
+const mapBooking = (b) => ({
+  ...b,
+  service:     { name: b.service_name, duration: b.service_duration },
+  name:        b.client_name,
+  staffColor:  b.staff?.color,
+  staffInitials: b.staff?.initials,
+});
+
+// ── BOTTOM NAV ──────────────────────────────────────────────────
+function BottomNav({ tab, setTab, isAdmin }) {
+  const userTabs = [
+    { id:'home',     label:'Home',       icon:'⊞' },
+    { id:'booking',  label:'Prenota',    icon:'✦' },
+    { id:'calendar', label:'Calendario', icon:'▦' },
+    { id:'profile',  label:'Profilo',    icon:'◯' },
+  ];
+  const adminTabs = [
+    { id:'admin-dash',    label:'Dashboard',  icon:'⊞' },
+    { id:'admin-cal',     label:'Calendario', icon:'▦' },
+    { id:'admin-staff',   label:'Staff',      icon:'◉' },
+    { id:'admin-history', label:'Storico',    icon:'≡' },
+    { id:'admin-account', label:'Account',    icon:'◯' },
+  ];
+  const tabs = isAdmin ? adminTabs : userTabs;
+  return (
+    <nav className="bottom-nav">
+      {tabs.map(t => (
+        <button key={t.id} className={`nav-item ${tab===t.id?'active':''}`} onClick={() => setTab(t.id)}>
+          <span className="nav-icon">{t.icon}</span>
+          <span className="nav-label">{t.label}</span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+// ── TOAST ───────────────────────────────────────────────────────
+function Toast({ message, onDone }) {
+  useEffect(() => { const t = setTimeout(onDone, 2500); return () => clearTimeout(t); }, []);
+  return <div className="toast">{message}</div>;
+}
+
+// ── LOADING ─────────────────────────────────────────────────────
+function LoadingScreen() {
+  return <div className="loading-screen"><div className="spinner"></div></div>;
+}
+
+// ── AUTH SCREEN ─────────────────────────────────────────────────
+function AuthScreen({ onLogin }) {
+  const [mode,     setMode]    = useState('login');
+  const [email,    setEmail]   = useState('');
+  const [pass,     setPass]    = useState('');
+  const [name,     setName]    = useState('');
+  const [phone,    setPhone]   = useState('');
+  const [err,      setErr]     = useState('');
+  const [busy,     setBusy]    = useState(false);
+  const [showPass, setShowPass]= useState(false);
+
+  const handle = async () => {
+    if (!email || !pass) { setErr('Compila tutti i campi'); return; }
+    setBusy(true); setErr('');
+    try {
+      if (mode === 'login') {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+        if (error) throw error;
+        onLogin(data.user);
+      } else {
+        if (!name.trim()) { setErr('Inserisci il tuo nome'); setBusy(false); return; }
+        const { data, error } = await supabase.auth.signUp({
+          email, password: pass,
+          options: { data: { name: name.trim(), phone: phone.trim() } },
+        });
+        if (error) throw error;
+        if (data.user) onLogin(data.user);
+        else setErr('Controlla la tua email per confermare la registrazione.');
+      }
+    } catch(e) {
+      setErr(e.message || 'Errore. Riprova.');
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div className="screen" style={{justifyContent:'center', padding:'0 32px', paddingTop:'env(safe-area-inset-top)'}}>
+      <div style={{marginBottom:36, textAlign:'center'}}>
+        <div style={{width:72,height:72,background:'var(--ink)',borderRadius:20,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px',boxShadow:'0 8px 24px oklch(10% 0.005 90 / 0.25)'}}>
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <path d="M10 8 Q10 4 14 4 Q14 8 18 8 Q22 8 22 4 Q26 4 26 8 L26 14 Q26 20 18 24 Q10 20 10 14 Z" fill="white" opacity="0.9"/>
+            <path d="M18 24 L18 32" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+            <circle cx="12" cy="30" r="2" fill="white" opacity="0.6"/>
+            <circle cx="24" cy="30" r="2" fill="white" opacity="0.6"/>
+          </svg>
+        </div>
+        <h1 style={{fontSize:28,fontWeight:700,color:'var(--ink)',letterSpacing:-0.5,lineHeight:1.1}}>Hair Studios</h1>
+        <p style={{fontSize:13,color:'var(--ink3)',marginTop:6}}>Barber Shop</p>
+      </div>
+
+      <div style={{display:'flex',background:'var(--bg2)',borderRadius:10,padding:4,width:'100%',marginBottom:24}}>
+        {['login','register'].map(m => (
+          <button key={m} onClick={() => {setMode(m);setErr('');}}
+            style={{flex:1,padding:'10px 0',borderRadius:8,fontSize:13,fontWeight:600,
+              background:mode===m?'var(--bg)':'transparent',
+              color:mode===m?'var(--ink)':'var(--ink3)',
+              boxShadow:mode===m?'var(--shadow)':'none',transition:'all 0.2s'}}>
+            {m==='login'?'Accedi':'Registrati'}
+          </button>
+        ))}
+      </div>
+
+      <div style={{display:'flex',flexDirection:'column',gap:14,width:'100%'}}>
+        {mode==='register' && (
+          <>
+            <div className="input-group">
+              <label className="input-label">Nome completo</label>
+              <input className="input-field" placeholder="Mario Rossi" value={name} onChange={e=>setName(e.target.value)} />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Telefono</label>
+              <input className="input-field" placeholder="345 000 0000" value={phone} onChange={e=>setPhone(e.target.value)} />
+            </div>
+          </>
+        )}
+        <div className="input-group">
+          <label className="input-label">Email</label>
+          <input className="input-field" type="email" placeholder="nome@email.com" value={email} onChange={e=>setEmail(e.target.value)} />
+        </div>
+        <div className="input-group">
+          <label className="input-label">Password</label>
+          <div style={{position:'relative'}}>
+            <input className="input-field" type={showPass?'text':'password'} placeholder="••••••••" value={pass}
+              onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handle()}
+              style={{paddingRight:44}} />
+            <button type="button" onClick={()=>setShowPass(v=>!v)}
+              style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',
+                background:'none',border:'none',cursor:'pointer',color:'var(--ink3)',fontSize:16,lineHeight:1,padding:4}}>
+              {showPass?'🙈':'👁'}
+            </button>
+          </div>
+        </div>
+        {err && <p style={{fontSize:12,color:'oklch(45% 0.18 25)',fontWeight:500}}>{err}</p>}
+      </div>
+
+      <button className="btn-primary" style={{marginTop:24,opacity:busy?0.6:1}} disabled={busy} onClick={handle}>
+        {busy ? 'Attendere...' : mode==='login' ? 'Accedi' : 'Crea Account'}
+      </button>
+    </div>
+  );
+}
+
+// ── USER HOME ───────────────────────────────────────────────────
+function UserHome({ user, profile, bookings, setTab, staff, services }) {
+  const myBookings = bookings.filter(b => b.userId===profile.id||b.user_id===profile.id)
+    .sort((a,b) => new Date(a.date+' '+a.time) - new Date(b.date+' '+b.time));
+  const next = myBookings.find(b => b.status!=='cancelled' && new Date(b.date+' '+b.time) >= new Date());
+  const staffMember = next ? staff.find(s => s.id===next.staff_id||s.id===next.staffId) : null;
+
+  const hour = new Date().getHours();
+  const greeting = hour<12 ? 'Buongiorno' : hour<18 ? 'Buonasera' : 'Buonasera';
+
+  return (
+    <div className="screen">
+      <div className="scroll-content" style={{padding:'env(safe-area-inset-top, 16px) 24px 24px'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:28,paddingTop:8}}>
+          <div>
+            <p style={{fontSize:13,color:'var(--ink3)'}}>{greeting},</p>
+            <h2 style={{fontSize:24,fontWeight:700,color:'var(--ink)',lineHeight:1.1,letterSpacing:-0.3}}>
+              {profile.name.split(' ')[0]} 👋
+            </h2>
+          </div>
+          <button onClick={() => setTab('profile')}>
+            <div className="avatar" style={{width:44,height:44,fontSize:16,background:'var(--ink)',color:'white'}}>
+              {profile.name.split(' ').map(n=>n[0]).join('').slice(0,2)}
+            </div>
+          </button>
+        </div>
+
+        {next ? (
+          <div className="card-dark" style={{marginBottom:20,position:'relative',overflow:'hidden'}}>
+            <div style={{position:'absolute',right:-20,top:-20,width:120,height:120,borderRadius:'50%',background:'white',opacity:0.04}}></div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16}}>
+              <div>
+                <p style={{fontSize:11,color:'rgba(255,255,255,0.5)',fontWeight:600,letterSpacing:0.5,textTransform:'uppercase',marginBottom:4}}>Prossima Prenotazione</p>
+                <h3 style={{fontSize:20,fontWeight:700,color:'white',letterSpacing:-0.3}}>{next.service_name}</h3>
+              </div>
+              <span className="badge badge-gold">{next.status==='confirmed'?'✓ Confermata':'◌ In attesa di conferma'}</span>
+            </div>
+            <div style={{height:1,background:'rgba(255,255,255,0.1)',marginBottom:16}}></div>
+            <div style={{display:'flex',gap:20}}>
+              {[
+                ['Data',    new Date(next.date).toLocaleDateString('it-IT',{day:'numeric',month:'long'})],
+                ['Orario',  next.time.slice(0,5)],
+                ['Barbiere',staffMember?.name||'—'],
+              ].map(([k,v]) => (
+                <div key={k}>
+                  <p style={{fontSize:11,color:'rgba(255,255,255,0.4)',marginBottom:2}}>{k}</p>
+                  <p style={{fontSize:14,fontWeight:600,color:'white'}}>{v}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{background:'var(--bg2)',borderRadius:'var(--radius)',padding:24,marginBottom:20,textAlign:'center',border:'1px dashed var(--border)'}}>
+            <p style={{fontSize:28,marginBottom:8}}>✂️</p>
+            <p style={{fontSize:14,fontWeight:600,color:'var(--ink)',marginBottom:4}}>Nessuna prenotazione</p>
+            <p style={{fontSize:12,color:'var(--ink3)'}}>Prenota il tuo prossimo taglio</p>
+          </div>
+        )}
+
+        <button className="btn-gold" style={{marginBottom:20}} onClick={() => setTab('booking')}>
+          + Nuova Prenotazione
+        </button>
+
+      </div>
+    </div>
+  );
+}
+
+// ── BOOKING FLOW ────────────────────────────────────────────────
+function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, setTab }) {
+  const [step, setStep]                   = useState(0);
+  const [selectedServices, setSel]        = useState([]);
+  const [selectedStaff, setSelectedStaff] = useState(null);
+  const [date, setDate]                   = useState(null);
+  const [time, setTime]                   = useState(null);
+  const [weekOffset, setWeekOffset]       = useState(0);
+  const [selectedDay, setSelectedDay]     = useState(0);
+  const [busy, setBusy]                   = useState(false);
+  const weekDates = getWeekDates(weekOffset);
+  const totalDuration = selectedServices.reduce((a,s)=>a+s.duration,0);
+
+  const toggleService = (s) => {
+    setSel(prev => prev.find(p=>p.id===s.id) ? prev.filter(p=>p.id!==s.id) : [...prev,s]);
+    setTime(null); setDate(null);
+  };
+
+  const ALL_SLOTS = [];
+  for(let h=8;h<20;h++){
+    ALL_SLOTS.push(`${String(h).padStart(2,'0')}:00`);
+    ALL_SLOTS.push(`${String(h).padStart(2,'0')}:30`);
+  }
+
+  const isSlotAvailable = (d, t, sId) => {
+    const [h,m] = t.split(':').map(Number);
+    const start = h*60+m, end = start+totalDuration;
+    return !bookings.some(b => {
+      if (b.staff_id!==sId||b.date!==d||b.status==='cancelled') return false;
+      const [bh,bm] = (b.time||'').slice(0,5).split(':').map(Number);
+      const bs=bh*60+bm, be=bs+b.service_duration;
+      return start<be && end>bs;
+    });
+  };
+
+  const confirm = async () => {
+    if (!selectedStaff||!date||!time||!selectedServices.length) return;
+    setBusy(true);
+    const combinedName = selectedServices.map(s=>s.name).join(' + ');
+    const { error } = await supabase.from('bookings').insert({
+      user_id:          profile.id,
+      staff_id:         selectedStaff.id,
+      service_id:       selectedServices.length===1 ? selectedServices[0].id : null,
+      service_name:     combinedName,
+      service_duration: totalDuration,
+      client_name:      profile.name,
+      date, time,
+      status: 'pending',
+    });
+    setBusy(false);
+    if (error) { setToast('Errore: ' + error.message); return; }
+    setToast('✓ Prenotazione inviata!');
+    setStep(0); setSel([]); setSelectedStaff(null); setDate(null); setTime(null);
+    onBooked();
+    setTab('home');
+  };
+
+  const steps = ['Servizi','Barbiere','Data & Ora','Conferma'];
+  return (
+    <div className="screen">
+      <div style={{padding:'env(safe-area-inset-top, 16px) 24px 0',flexShrink:0,paddingTop:16}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
+          {step>0 && <button className="btn-icon" onClick={() => setStep(s=>s-1)}>←</button>}
+          <div style={{flex:1}}>
+            <h2 style={{fontSize:20,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>{steps[step]}</h2>
+            {step===0&&selectedServices.length>0&&(
+              <p style={{fontSize:11,color:'var(--gold)',fontWeight:600,marginTop:2}}>{selectedServices.length} selezionati · {totalDuration} min</p>
+            )}
+          </div>
+        </div>
+        <div className="step-indicator" style={{marginBottom:16}}>
+          {steps.map((_,i)=><div key={i} className={`step-dot ${i===step?'active':i<step?'done':''}`}></div>)}
+        </div>
+      </div>
+
+      <div className="scroll-content" style={{padding:'0 24px 24px'}}>
+        {/* STEP 0: Servizi */}
+        {step===0 && (
+          <>
+            <p style={{fontSize:12,color:'var(--ink3)',marginBottom:14}}>Seleziona uno o più servizi</p>
+            <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
+              {services.map(s => {
+                const isSel = selectedServices.find(p=>p.id===s.id);
+                return (
+                  <button key={s.id} onClick={()=>toggleService(s)}
+                    style={{display:'flex',alignItems:'center',gap:14,padding:'16px 18px',
+                      background:isSel?'var(--ink)':'var(--bg)',borderRadius:'var(--radius-sm)',
+                      border:'1.5px solid',borderColor:isSel?'var(--ink)':'var(--border)',
+                      textAlign:'left',transition:'all 0.15s',width:'100%'}}>
+                    <div style={{width:22,height:22,borderRadius:6,border:'2px solid',
+                      borderColor:isSel?'var(--gold)':'rgba(0,0,0,0.2)',
+                      background:isSel?'var(--gold)':'transparent',
+                      display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                      {isSel&&<span style={{color:'white',fontSize:13,fontWeight:700}}>✓</span>}
+                    </div>
+                    <div style={{flex:1}}>
+                      <p style={{fontSize:15,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",color:isSel?'white':'var(--ink)'}}>{s.name}</p>
+                      <p style={{fontSize:12,color:isSel?'rgba(255,255,255,0.55)':'var(--ink3)',marginTop:2}}>{s.duration} min{s.price?` · €${Number(s.price).toFixed(2)}`:''}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {selectedServices.length>0&&(
+              <div style={{background:'var(--gold-bg)',border:'1px solid var(--gold-dim)',borderRadius:'var(--radius-sm)',padding:'12px 16px',marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <div>
+                  <p style={{fontSize:11,fontWeight:600,color:'var(--gold)',textTransform:'uppercase',letterSpacing:0.4}}>Durata totale</p>
+                  <p style={{fontSize:18,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)',marginTop:2}}>{totalDuration} min</p>
+                </div>
+              </div>
+            )}
+            <button className="btn-primary" style={{opacity:selectedServices.length?1:0.4}} disabled={!selectedServices.length} onClick={()=>setStep(1)}>Continua →</button>
+          </>
+        )}
+
+        {/* STEP 1: Barbiere */}
+        {step===1 && (
+          <>
+            <p style={{fontSize:12,color:'var(--ink3)',marginBottom:14}}>Scegli il tuo barbiere</p>
+            <div style={{display:'flex',flexDirection:'column',gap:12,marginBottom:24}}>
+              {staff.map(s => (
+                <button key={s.id} onClick={()=>{setSelectedStaff(s);setTime(null);setDate(null);}}
+                  style={{display:'flex',alignItems:'center',gap:16,padding:'18px',borderRadius:'var(--radius)',
+                    background:selectedStaff?.id===s.id?'var(--ink)':'var(--bg)',
+                    border:'1.5px solid',borderColor:selectedStaff?.id===s.id?'var(--ink)':'var(--border)',
+                    textAlign:'left',transition:'all 0.15s',width:'100%'}}>
+                  <div className="avatar" style={{width:52,height:52,fontSize:18,background:s.color,color:'white',fontWeight:700}}>{s.initials}</div>
+                  <div style={{flex:1}}>
+                    <p style={{fontSize:16,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:selectedStaff?.id===s.id?'white':'var(--ink)'}}>{s.name}</p>
+                    <p style={{fontSize:12,color:selectedStaff?.id===s.id?'rgba(255,255,255,0.6)':'var(--ink3)',marginTop:2}}>{s.role}</p>
+                  </div>
+                  {selectedStaff?.id===s.id&&<span style={{color:'var(--gold)',fontSize:20}}>✓</span>}
+                </button>
+              ))}
+            </div>
+            <button className="btn-primary" style={{opacity:selectedStaff?1:0.4}} disabled={!selectedStaff} onClick={()=>setStep(2)}>Continua →</button>
+          </>
+        )}
+
+        {/* STEP 2: Data & Ora */}
+        {step===2&&selectedStaff&&(
+          <>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+              <button className="btn-icon" onClick={()=>{setWeekOffset(o=>Math.max(0,o-1));setTime(null);setDate(null);}} style={{opacity:weekOffset===0?0.3:1}}>←</button>
+              <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{MONTHS[weekDates[0].getMonth()]} {weekDates[0].getFullYear()}</span>
+              <button className="btn-icon" onClick={()=>{setWeekOffset(o=>o+1);setTime(null);setDate(null);}}>→</button>
+            </div>
+            <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingBottom:4}}>
+              {weekDates.map((d,i) => {
+                const today = new Date(); today.setHours(0,0,0,0);
+                const isPast = d < today;
+                const isSel = selectedDay===i && !isPast;
+                const isToday = d.toDateString()===new Date().toDateString();
+                return (
+                  <button key={i} disabled={isPast}
+                    onClick={()=>{ if(!isPast){setSelectedDay(i);setTime(null);setDate(null);}}}
+                    style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,padding:'10px 12px',
+                      borderRadius:12,border:'1.5px solid',flexShrink:0,minWidth:46,
+                      borderColor:isSel?'var(--ink)':isToday?'var(--gold-dim)':'var(--border)',
+                      background:isSel?'var(--ink)':isToday?'var(--gold-bg)':'var(--bg)',
+                      opacity:isPast?0.3:1,cursor:isPast?'not-allowed':'pointer',transition:'all 0.15s'}}>
+                    <span style={{fontSize:10,fontWeight:600,color:isSel?'rgba(255,255,255,0.6)':isToday?'var(--gold)':'var(--ink3)',textTransform:'uppercase',letterSpacing:0.3}}>{DAYS_SHORT[i]}</span>
+                    <span style={{fontSize:18,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:isSel?'white':'var(--ink)'}}>{d.getDate()}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p style={{fontSize:12,fontWeight:600,color:'var(--ink2)',marginBottom:10,textTransform:'uppercase',letterSpacing:0.5}}>Orari disponibili</p>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:24}}>
+              {ALL_SLOTS.map(h => {
+                const dStr=weekDates[selectedDay].toISOString().split('T')[0];
+                const [hh,mm]=h.split(':').map(Number);
+                const withinHours=(hh*60+mm+totalDuration)<=20*60;
+                const now=new Date();
+                const isToday=weekDates[selectedDay].toDateString()===now.toDateString();
+                const isPastTime=isToday&&(hh*60+mm)<=(now.getHours()*60+now.getMinutes());
+                const avail=withinHours&&!isPastTime&&isSlotAvailable(dStr,h,selectedStaff.id);
+                const isSel=time===h&&date===dStr;
+                return (
+                  <button key={h} disabled={!avail} onClick={()=>{setTime(h);setDate(dStr);}}
+                    style={{padding:'12px 8px',borderRadius:10,border:'1.5px solid',textAlign:'center',
+                      fontSize:13,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",
+                      background:isSel?'var(--ink)':!avail?'var(--bg2)':'var(--bg)',
+                      color:isSel?'white':!avail?'var(--ink3)':'var(--ink)',
+                      borderColor:isSel?'var(--ink)':'var(--border)',
+                      opacity:!avail?0.4:1,cursor:!avail?'not-allowed':'pointer',
+                      textDecoration:!avail?'line-through':'none',transition:'all 0.15s'}}>
+                    {h}
+                  </button>
+                );
+              })}
+            </div>
+            {date&&time&&<button className="btn-primary" onClick={()=>setStep(3)}>Continua →</button>}
+          </>
+        )}
+
+        {/* STEP 3: Conferma */}
+        {step===3&&selectedServices.length>0&&selectedStaff&&date&&time&&(
+          <div style={{paddingBottom:24}}>
+            <div className="card-dark" style={{marginBottom:20}}>
+              <p style={{fontSize:11,color:'rgba(255,255,255,0.5)',fontWeight:600,letterSpacing:0.5,textTransform:'uppercase',marginBottom:12}}>Riepilogo</p>
+              {selectedServices.map((s,i)=>(
+                <div key={s.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
+                  paddingBottom:i<selectedServices.length-1?8:0,marginBottom:i<selectedServices.length-1?8:0,
+                  borderBottom:i<selectedServices.length-1?'1px solid rgba(255,255,255,0.08)':'none'}}>
+                  <span style={{fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'white'}}>{s.name}</span>
+                  <span style={{fontSize:12,color:'rgba(255,255,255,0.5)'}}>{s.duration} min</span>
+                </div>
+              ))}
+              <div style={{height:1,background:'rgba(255,255,255,0.1)',margin:'16px 0'}}></div>
+              {[
+                ['Barbiere', selectedStaff.name],
+                ['Data',     new Date(date).toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})],
+                ['Orario',   time],
+                ['Durata',   `${totalDuration} min`],
+              ].map(([k,v])=>(
+                <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                  <span style={{fontSize:12,color:'rgba(255,255,255,0.5)',textTransform:'uppercase',letterSpacing:0.4,fontWeight:600}}>{k}</span>
+                  <span style={{fontSize:14,fontWeight:600,color:'white'}}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <p style={{fontSize:12,color:'var(--ink3)',textAlign:'center',marginBottom:20}}>La prenotazione sarà confermata dal barbiere entro 24h</p>
+            <button className="btn-gold" style={{opacity:busy?0.6:1}} disabled={busy} onClick={confirm}>
+              {busy?'Invio...':'Conferma Prenotazione'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── USER CALENDAR ───────────────────────────────────────────────
+function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedDay, setSelectedDay] = useState(null);
+  const weekDates = getWeekDates(weekOffset);
+
+  const myBookings = bookings.filter(b => b.user_id===profile.id);
+  const dayBookings = selectedDay!==null
+    ? myBookings.filter(b=>b.date===weekDates[selectedDay].toISOString().split('T')[0])
+    : myBookings;
+
+  const cancel = async (id) => {
+    const { error } = await supabase.from('bookings').update({ status:'cancelled' }).eq('id',id);
+    if (error) { setToast('Errore: '+error.message); return; }
+    setToast('Prenotazione annullata');
+    onRefresh();
+  };
+
+  return (
+    <div className="screen">
+      <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
+        <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',marginBottom:16,letterSpacing:-0.3}}>Le mie prenotazioni</h2>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+          <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>←</button>
+          <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{weekDates[0].getDate()} – {weekDates[6].getDate()} {MONTHS[weekDates[0].getMonth()]}</span>
+          <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>→</button>
+        </div>
+        <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingBottom:2}}>
+          <button onClick={()=>setSelectedDay(null)}
+            style={{padding:'6px 14px',borderRadius:99,fontSize:12,fontWeight:600,border:'1.5px solid',flexShrink:0,
+              background:selectedDay===null?'var(--ink)':'var(--bg)',color:selectedDay===null?'white':'var(--ink3)',borderColor:selectedDay===null?'var(--ink)':'var(--border)'}}>
+            Tutti
+          </button>
+          {weekDates.map((d,i)=>{
+            const hasB=myBookings.some(b=>b.date===d.toISOString().split('T')[0]&&b.status!=='cancelled');
+            return(
+              <button key={i} onClick={()=>setSelectedDay(selectedDay===i?null:i)}
+                style={{padding:'6px 14px',borderRadius:99,fontSize:12,fontWeight:600,border:'1.5px solid',flexShrink:0,position:'relative',
+                  background:selectedDay===i?'var(--ink)':'var(--bg)',color:selectedDay===i?'white':'var(--ink)',borderColor:selectedDay===i?'var(--ink)':'var(--border)'}}>
+                {DAYS_SHORT[i]} {d.getDate()}
+                {hasB&&<span style={{position:'absolute',top:2,right:2,width:6,height:6,borderRadius:'50%',background:'var(--gold)'}}></span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="scroll-content" style={{padding:'0 24px 24px'}}>
+        {dayBookings.filter(b=>b.status!=='cancelled').length===0&&(
+          <div style={{textAlign:'center',padding:'40px 0'}}>
+            <p style={{fontSize:32,marginBottom:8}}>📅</p>
+            <p style={{fontSize:14,color:'var(--ink3)'}}>Nessuna prenotazione</p>
+          </div>
+        )}
+        {dayBookings.filter(b=>b.status!=='cancelled').map(b=>{
+          const s=staff.find(st=>st.id===b.staff_id);
+          return(
+            <div key={b.id} className="card" style={{marginBottom:12}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
+                <div>
+                  <p style={{fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>{b.service_name}</p>
+                  <p style={{fontSize:12,color:'var(--ink3)',marginTop:2}}>{new Date(b.date).toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'long'})} · {b.time?.slice(0,5)}</p>
+                </div>
+                <span className={`badge ${b.status==='confirmed'?'badge-green':'badge-gold'}`}>
+                  {b.status==='confirmed'?'✓ Confermata':'◌ In attesa'}
+                </span>
+              </div>
+              {s&&(
+                <div style={{display:'flex',alignItems:'center',gap:10,paddingTop:10,borderTop:'1px solid var(--border)'}}>
+                  <div className="avatar" style={{width:32,height:32,fontSize:11,background:s.color,color:'white',fontWeight:700}}>{s.initials}</div>
+                  <div style={{flex:1}}>
+                    <p style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{s.name}</p>
+                    <p style={{fontSize:11,color:'var(--ink3)'}}>{b.service_duration} min</p>
+                  </div>
+                  {b.status==='pending'&&(
+                    <button onClick={()=>cancel(b.id)}
+                      style={{fontSize:11,fontWeight:600,padding:'6px 12px',borderRadius:8,border:'1px solid',
+                        color:'oklch(45% 0.18 25)',borderColor:'oklch(90% 0.04 20)',background:'oklch(98% 0.02 20)'}}>
+                      Annulla
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── USER PROFILE ────────────────────────────────────────────────
+function UserProfile({ profile, bookings, onLogout }) {
+  const myBookings = bookings.filter(b=>b.user_id===profile.id);
+  const confirmed  = myBookings.filter(b=>b.status==='confirmed').length;
+
+  const logout = async () => { await supabase.auth.signOut(); onLogout(); };
+
+  return (
+    <div className="screen">
+      <div className="scroll-content" style={{padding:'env(safe-area-inset-top,16px) 24px 24px',paddingTop:24}}>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',paddingTop:16,marginBottom:28}}>
+          <div className="avatar" style={{width:80,height:80,fontSize:28,background:'var(--ink)',color:'white',fontWeight:700,marginBottom:12}}>
+            {profile.name.split(' ').map(n=>n[0]).join('').slice(0,2)}
+          </div>
+          <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>{profile.name}</h2>
+          <p style={{fontSize:13,color:'var(--ink3)',marginTop:4}}>{profile.email||''}</p>
+        </div>
+
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:24}}>
+          {[['Prenotazioni',myBookings.length],['Confermate',confirmed]].map(([l,v])=>(
+            <div key={l} style={{background:'var(--bg2)',borderRadius:'var(--radius-sm)',padding:16,textAlign:'center',border:'1px solid var(--border)'}}>
+              <p style={{fontSize:28,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>{v}</p>
+              <p style={{fontSize:11,color:'var(--ink3)',marginTop:4,fontWeight:500}}>{l}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="card" style={{marginBottom:16}}>
+          <p style={{fontSize:12,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5,marginBottom:14}}>Informazioni Personali</p>
+          {[['Nome',profile.name],['Email',profile.email||'—'],['Telefono',profile.phone||'—']].map(([k,v])=>(
+            <div key={k}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0'}}>
+                <span style={{fontSize:12,color:'var(--ink3)',fontWeight:500}}>{k}</span>
+                <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{v}</span>
+              </div>
+              <div className="divider" style={{margin:0}}></div>
+            </div>
+          ))}
+        </div>
+
+        <div className="card" style={{marginBottom:20}}>
+          <p style={{fontSize:12,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5,marginBottom:14}}>Storico Servizi</p>
+          {myBookings.slice(0,5).map(b=>(
+            <div key={b.id}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0'}}>
+                <div>
+                  <p style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{b.service_name}</p>
+                  <p style={{fontSize:11,color:'var(--ink3)'}}>{new Date(b.date).toLocaleDateString('it-IT',{day:'numeric',month:'short'})}</p>
+                </div>
+                <span className={`badge ${b.status==='confirmed'?'badge-green':b.status==='cancelled'?'badge-red':'badge-gold'}`} style={{fontSize:10}}>
+                  {b.status==='confirmed'?'Confermata':b.status==='cancelled'?'Annullata':'In attesa'}
+                </span>
+              </div>
+              <div className="divider" style={{margin:0}}></div>
+            </div>
+          ))}
+          {myBookings.length===0&&<p style={{fontSize:12,color:'var(--ink3)'}}>Nessuna prenotazione ancora</p>}
+        </div>
+
+        <button className="btn-secondary" onClick={logout}>Esci dall'account</button>
+      </div>
+    </div>
+  );
+}
+
+// ── BOOKING ACTION MODAL (admin) ────────────────────────────────
+function BookingActionModal({ booking, bookings, onSave, onClose, staff }) {
+  const [mode, setMode]         = useState('menu');
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedDay, setSelectedDay] = useState(0);
+  const [newTime, setNewTime]   = useState(null);
+  const [newStaff, setNewStaff] = useState(booking.staff_id);
+  const [busy, setBusy]         = useState(false);
+  const weekDates = getWeekDates(weekOffset);
+
+  const isSlotTaken = (d,t,sId) =>
+    bookings.some(b=>b.id!==booking.id&&b.date===d&&b.time?.slice(0,5)===t&&b.staff_id===sId&&b.status!=='cancelled');
+
+  const confirmReschedule = async () => {
+    const dateStr=weekDates[selectedDay].toISOString().split('T')[0];
+    if (!newTime) return;
+    setBusy(true);
+    const { error } = await supabase.from('bookings').update({ date:dateStr, time:newTime, staff_id:newStaff, status:'confirmed' }).eq('id',booking.id);
+    setBusy(false);
+    if (error) return;
+    onSave();
+  };
+
+  const cancelBooking = async () => {
+    setBusy(true);
+    await supabase.from('bookings').update({ status:'cancelled' }).eq('id',booking.id);
+    setBusy(false);
+    onSave();
+  };
+
+  const bookingStaff = staff.find(s=>s.id===booking.staff_id);
+  const HOURS = [];
+  for (let h=8;h<20;h++) { HOURS.push(`${String(h).padStart(2,'0')}:00`); HOURS.push(`${String(h).padStart(2,'0')}:30`); }
+
+  return (
+    <div style={{position:'absolute',inset:0,zIndex:100,display:'flex',flexDirection:'column',justifyContent:'flex-end',background:'rgba(0,0,0,0.4)'}}>
+      <div style={{background:'var(--bg)',borderRadius:'24px 24px 0 0',padding:'20px 24px 40px',maxHeight:'85%',display:'flex',flexDirection:'column'}}>
+        <div style={{width:36,height:4,borderRadius:2,background:'var(--border)',margin:'0 auto 20px'}}></div>
+
+        {mode==='menu'&&(
+          <>
+            <div style={{background:'var(--bg2)',borderRadius:'var(--radius-sm)',padding:'14px 16px',marginBottom:20,border:'1px solid var(--border)'}}>
+              <p style={{fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)',marginBottom:2}}>{booking.client_name}</p>
+              {booking.profiles?.phone&&<p style={{fontSize:12,color:'var(--ink2)',fontWeight:600,marginBottom:4}}>{booking.profiles.phone}</p>}
+              <p style={{fontSize:12,color:'var(--ink3)'}}>{booking.service_name} · {booking.time?.slice(0,5)} · {new Date(booking.date).toLocaleDateString('it-IT',{day:'numeric',month:'long'})}</p>
+              {bookingStaff&&<p style={{fontSize:12,color:'var(--ink3)',marginTop:2}}>con {bookingStaff.name}</p>}
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              <button onClick={()=>setMode('reschedule')}
+                style={{display:'flex',alignItems:'center',gap:14,padding:16,borderRadius:'var(--radius-sm)',background:'var(--bg2)',border:'1px solid var(--border)',textAlign:'left',width:'100%'}}>
+                <div style={{width:40,height:40,borderRadius:12,background:'var(--ink)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  <span style={{color:'white',fontSize:18}}>↕</span>
+                </div>
+                <div>
+                  <p style={{fontSize:14,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>Sposta appuntamento</p>
+                  <p style={{fontSize:11,color:'var(--ink3)',marginTop:1}}>Cambia data, orario o barbiere</p>
+                </div>
+              </button>
+              <button onClick={cancelBooking} disabled={busy}
+                style={{display:'flex',alignItems:'center',gap:14,padding:16,borderRadius:'var(--radius-sm)',background:'oklch(98% 0.02 20)',border:'1px solid oklch(90% 0.04 20)',textAlign:'left',width:'100%'}}>
+                <div style={{width:40,height:40,borderRadius:12,background:'oklch(45% 0.18 25)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  <span style={{color:'white',fontSize:18}}>✕</span>
+                </div>
+                <div>
+                  <p style={{fontSize:14,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'oklch(35% 0.18 25)'}}>Annulla appuntamento</p>
+                </div>
+              </button>
+            </div>
+            <button className="btn-secondary" style={{marginTop:16}} onClick={onClose}>Chiudi</button>
+          </>
+        )}
+
+        {mode==='reschedule'&&(
+          <div style={{display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
+              <button className="btn-icon" onClick={()=>setMode('menu')}>←</button>
+              <h3 style={{fontSize:17,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>Sposta appuntamento</h3>
+            </div>
+            <div style={{display:'flex',gap:8,marginBottom:14}}>
+              {staff.map(s=>(
+                <button key={s.id} onClick={()=>{setNewStaff(s.id);setNewTime(null);}}
+                  style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:'10px 8px',borderRadius:12,border:'1.5px solid',
+                    borderColor:newStaff===s.id?'var(--ink)':'var(--border)',background:newStaff===s.id?'var(--ink)':'var(--bg2)'}}>
+                  <div className="avatar" style={{width:32,height:32,fontSize:11,background:s.color,color:'white',fontWeight:700}}>{s.initials}</div>
+                  <p style={{fontSize:11,fontWeight:600,color:newStaff===s.id?'white':'var(--ink)'}}>{s.name.split(' ')[0]}</p>
+                </button>
+              ))}
+            </div>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+              <button className="btn-icon" style={{width:32,height:32,fontSize:14}} onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} disabled={weekOffset===0}>←</button>
+              <span style={{fontSize:12,fontWeight:600,color:'var(--ink)'}}>{weekDates[0].getDate()}–{weekDates[6].getDate()} {MONTHS[weekDates[0].getMonth()]}</span>
+              <button className="btn-icon" style={{width:32,height:32,fontSize:14}} onClick={()=>setWeekOffset(o=>o+1)}>→</button>
+            </div>
+            <div style={{display:'flex',gap:4,marginBottom:12,overflowX:'auto'}}>
+              {weekDates.map((d,i)=>{
+                const today=new Date(); today.setHours(0,0,0,0);
+                const isPast=d<today;
+                const isSel=selectedDay===i&&!isPast;
+                return(
+                  <button key={i} disabled={isPast} onClick={()=>{if(!isPast){setSelectedDay(i);setNewTime(null);}}}
+                    style={{flex:1,minWidth:36,padding:'6px 2px',borderRadius:8,border:'1.5px solid',textAlign:'center',
+                      background:isSel?'var(--ink)':'var(--bg2)',borderColor:isSel?'var(--ink)':'var(--border)',
+                      opacity:isPast?0.3:1,cursor:isPast?'not-allowed':'pointer'}}>
+                    <p style={{fontSize:9,fontWeight:600,color:isSel?'rgba(255,255,255,0.6)':'var(--ink3)',textTransform:'uppercase'}}>{DAYS_SHORT[i]}</p>
+                    <p style={{fontSize:14,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:isSel?'white':'var(--ink)'}}>{d.getDate()}</p>
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,overflowY:'auto',flex:1,paddingBottom:4}}>
+              {HOURS.map(h=>{
+                const dStr=weekDates[selectedDay].toISOString().split('T')[0];
+                const taken=isSlotTaken(dStr,h,newStaff);
+                const now=new Date();
+                const isToday=weekDates[selectedDay].toDateString()===now.toDateString();
+                const [hh,mm]=h.split(':').map(Number);
+                const isPastTime=isToday&&(hh*60+mm)<=(now.getHours()*60+now.getMinutes());
+                const disabled=taken||isPastTime;
+                const sel=newTime===h;
+                return(
+                  <button key={h} disabled={disabled} onClick={()=>!disabled&&setNewTime(h)}
+                    style={{padding:'10px 4px',borderRadius:8,border:'1.5px solid',textAlign:'center',fontSize:12,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",
+                      background:sel?'var(--ink)':disabled?'var(--bg3)':'var(--bg2)',color:sel?'white':disabled?'var(--ink3)':'var(--ink)',
+                      borderColor:sel?'var(--ink)':'var(--border)',opacity:disabled?0.4:1,cursor:disabled?'not-allowed':'pointer',
+                      textDecoration:taken?'line-through':'none'}}>
+                    {h}
+                  </button>
+                );
+              })}
+            </div>
+            <button className="btn-primary" style={{marginTop:14,opacity:newTime&&!busy?1:0.4}} disabled={!newTime||busy} onClick={confirmReschedule}>
+              {busy?'Salvataggio...':'Conferma spostamento'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── ADMIN DASHBOARD ─────────────────────────────────────────────
+function AdminDash({ bookings, onRefresh, setToast, staff }) {
+  const today = TODAY();
+  const todayBks   = bookings.filter(b=>b.date===today&&b.status!=='cancelled');
+  const pending    = bookings.filter(b=>b.status==='pending');
+  const confirmed  = bookings.filter(b=>b.status==='confirmed').length;
+  const [activeBooking, setActiveBooking] = useState(null);
+
+  const accept = async (id) => {
+    await supabase.from('bookings').update({status:'confirmed'}).eq('id',id);
+    setToast('✓ Prenotazione accettata'); onRefresh();
+  };
+  const reject = async (id) => {
+    await supabase.from('bookings').update({status:'cancelled'}).eq('id',id);
+    setToast('Prenotazione rifiutata'); onRefresh();
+  };
+
+  return (
+    <div className="screen" style={{position:'relative'}}>
+      <div className="scroll-content" style={{padding:'env(safe-area-inset-top,16px) 24px 24px',paddingTop:16}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24}}>
+          <div>
+            <p style={{fontSize:12,color:'var(--ink3)',fontWeight:500}}>Dashboard</p>
+            <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>Gestione Salone</h2>
+          </div>
+        </div>
+
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:24}}>
+          {[
+            {label:'Oggi',      value:todayBks.length,  alert:false},
+            {label:'In attesa', value:pending.length,    alert:pending.length>0},
+            {label:'Confermate',value:confirmed,         alert:false},
+          ].map(s=>(
+            <div key={s.label} style={{background:s.alert?'var(--gold-bg)':'var(--bg2)',border:`1px solid ${s.alert?'var(--gold-dim)':'var(--border)'}`,borderRadius:'var(--radius-sm)',padding:'14px 10px',textAlign:'center'}}>
+              <p style={{fontSize:22,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:s.alert?'var(--gold)':'var(--ink)'}}>{s.value}</p>
+              <p style={{fontSize:9,color:'var(--ink3)',marginTop:3,fontWeight:500,textTransform:'uppercase',letterSpacing:0.3}}>{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {pending.length>0&&(
+          <>
+            <div className="section-header">
+              <span className="section-title">Da confermare</span>
+              <span className="badge badge-gold">{pending.length}</span>
+            </div>
+            {pending.map(b=>{
+              const s=staff.find(st=>st.id===b.staff_id);
+              return(
+                <div key={b.id} className="card" style={{marginBottom:10}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
+                    <div>
+                      <p style={{fontSize:14,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>{b.client_name}</p>
+                      <p style={{fontSize:12,color:'var(--ink3)',marginTop:2}}>{b.service_name} · {b.time?.slice(0,5)}</p>
+                      <p style={{fontSize:11,color:'var(--ink3)'}}>{new Date(b.date).toLocaleDateString('it-IT',{day:'numeric',month:'long'})} con {s?.name}</p>
+                    </div>
+                    <span style={{fontSize:12,color:'var(--ink3)'}}>{b.service_duration} min</span>
+                  </div>
+                  <div style={{display:'flex',gap:8}}>
+                    <button onClick={()=>reject(b.id)} style={{flex:1,padding:10,borderRadius:8,border:'1.5px solid var(--border)',fontSize:13,fontWeight:600,color:'var(--ink2)',background:'var(--bg)'}}>Rifiuta</button>
+                    <button onClick={()=>setActiveBooking(b)} style={{flex:1,padding:10,borderRadius:8,border:'1.5px solid var(--border)',fontSize:13,fontWeight:600,color:'var(--ink2)',background:'var(--bg)'}}>Sposta</button>
+                    <button onClick={()=>accept(b.id)} style={{flex:2,padding:10,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'white',background:'var(--ink)'}}>✓ Accetta</button>
+                  </div>
+                </div>
+              );
+            })}
+            <div className="divider"></div>
+          </>
+        )}
+
+        <div className="section-header">
+          <span className="section-title">Oggi, {new Date().toLocaleDateString('it-IT',{day:'numeric',month:'long'})}</span>
+        </div>
+        {todayBks.length===0
+          ? <p style={{fontSize:13,color:'var(--ink3)',textAlign:'center',padding:'20px 0'}}>Nessun appuntamento oggi</p>
+          : todayBks.sort((a,b)=>a.time?.localeCompare(b.time)).map(b=>{
+            const s=staff.find(st=>st.id===b.staff_id);
+            return(
+              <div key={b.id} style={{display:'flex',gap:12,alignItems:'center',padding:'12px 0',borderBottom:'1px solid var(--border)'}}>
+                <div style={{width:44,textAlign:'right',flexShrink:0}}>
+                  <p style={{fontSize:13,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>{b.time?.slice(0,5)}</p>
+                </div>
+                <div style={{width:3,alignSelf:'stretch',background:s?.color||'var(--ink)',borderRadius:99,flexShrink:0}}></div>
+                <div style={{flex:1}}>
+                  <p style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{b.client_name}</p>
+                  <p style={{fontSize:11,color:'var(--ink3)'}}>{b.service_name} · {s?.name}</p>
+                </div>
+                <button onClick={()=>setActiveBooking(b)} style={{width:32,height:32,borderRadius:8,background:'var(--bg2)',border:'1px solid var(--border)',fontSize:16,color:'var(--ink2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>···</button>
+              </div>
+            );
+          })
+        }
+      </div>
+      {activeBooking&&(
+        <BookingActionModal booking={activeBooking} bookings={bookings} staff={staff}
+          onSave={()=>{setActiveBooking(null);setToast('✓ Salvato');onRefresh();}}
+          onClose={()=>setActiveBooking(null)} />
+      )}
+    </div>
+  );
+}
+
+// ── ADMIN CALENDAR ───────────────────────────────────────────────
+function AdminCalendar({ bookings, onRefresh, setToast, staff }) {
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedDay, setSelectedDay] = useState(0);
+  const [activeBooking, setActiveBooking] = useState(null);
+  const weekDates = getWeekDates(weekOffset);
+
+  const dateStr = weekDates[selectedDay].toISOString().split('T')[0];
+  const dayBks  = bookings.filter(b=>b.date===dateStr&&b.status!=='cancelled');
+  const DISPLAY_HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
+  const CAL_START = 8;
+
+  const timeToY = (t) => {
+    const [h,m]=(t||'08:00').slice(0,5).split(':').map(Number);
+    return (h-CAL_START)*60+m;
+  };
+
+  return (
+    <div className="screen">
+      <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
+        <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',marginBottom:12,letterSpacing:-0.3}}>Calendario</h2>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+          <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>←</button>
+          <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{weekDates[0].getDate()} – {weekDates[5].getDate()} {MONTHS[weekDates[0].getMonth()]}</span>
+          <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>→</button>
+        </div>
+        <div style={{display:'flex',gap:4,marginBottom:12}}>
+          {weekDates.slice(0,6).map((d,i)=>{
+            const hasBks=bookings.some(b=>b.date===d.toISOString().split('T')[0]&&b.status!=='cancelled');
+            const isToday=d.toDateString()===new Date().toDateString();
+            return(
+              <button key={i} onClick={()=>setSelectedDay(i)}
+                style={{flex:1,padding:'8px 4px',borderRadius:10,border:'1.5px solid',textAlign:'center',position:'relative',
+                  background:selectedDay===i?'var(--ink)':isToday?'var(--gold-bg)':'var(--bg)',
+                  borderColor:selectedDay===i?'var(--ink)':isToday?'var(--gold-dim)':'var(--border)',transition:'all 0.15s'}}>
+                <p style={{fontSize:9,fontWeight:600,color:selectedDay===i?'rgba(255,255,255,0.6)':isToday?'var(--gold)':'var(--ink3)',textTransform:'uppercase',letterSpacing:0.3}}>{DAYS_SHORT[i]}</p>
+                <p style={{fontSize:16,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:selectedDay===i?'white':'var(--ink)'}}>{d.getDate()}</p>
+                {hasBks&&<div style={{position:'absolute',bottom:4,left:'50%',transform:'translateX(-50%)',width:4,height:4,borderRadius:'50%',background:selectedDay===i?'var(--gold)':'var(--ink3)'}}></div>}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'48px 1fr 1fr',gap:0,borderBottom:'1px solid var(--border)',paddingBottom:8}}>
+          <div></div>
+          {staff.map(s=>(
+            <div key={s.id} style={{textAlign:'center'}}>
+              <div className="avatar" style={{width:28,height:28,fontSize:10,background:s.color,color:'white',margin:'0 auto 2px',fontWeight:700}}>{s.initials}</div>
+              <p style={{fontSize:10,fontWeight:600,color:'var(--ink)',letterSpacing:0.2}}>{s.name}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="scroll-content" style={{padding:'0 16px 24px'}}>
+        <div style={{position:'relative',marginTop:8}}>
+          {DISPLAY_HOURS.map(h=>(
+            <div key={h} style={{display:'grid',gridTemplateColumns:'48px 1fr 1fr',height:72,position:'relative'}}>
+              <div style={{paddingRight:8,textAlign:'right'}}><span style={{fontSize:10,color:'var(--ink3)',fontWeight:500}}>{h}</span></div>
+              <div style={{borderTop:'1px solid var(--border)'}}></div>
+              <div style={{borderTop:'1px solid var(--border)',borderLeft:'1px solid var(--border)'}}></div>
+            </div>
+          ))}
+          <div style={{position:'absolute',top:0,left:48,right:0,bottom:0,display:'grid',gridTemplateColumns:'1fr 1fr',gap:0}}>
+            {staff.map((s,si)=>(
+              <div key={s.id} style={{position:'relative',borderLeft:si===1?'1px solid var(--border)':'none'}}>
+                {dayBks.filter(b=>b.staff_id===s.id).map(b=>{
+                  const top=timeToY(b.time)*(72/60);
+                  const h=b.service_duration*(72/60);
+                  return(
+                    <div key={b.id} onClick={()=>setActiveBooking(b)} style={{
+                      position:'absolute',top,left:4,right:4,height:Math.max(h,20),
+                      background:b.status==='confirmed'?s.color:'var(--gold-bg)',
+                      borderLeft:`3px solid ${b.status==='confirmed'?s.color:'var(--gold)'}`,
+                      borderRadius:6,padding:'4px 6px',overflow:'hidden',cursor:'pointer',opacity:b.status==='confirmed'?1:0.8}}>
+                      <p style={{fontSize:10,fontWeight:700,color:b.status==='confirmed'?'white':'var(--ink)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>{b.client_name}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {activeBooking&&(
+        <BookingActionModal booking={activeBooking} bookings={bookings} staff={staff}
+          onSave={()=>{setActiveBooking(null);setToast('✓ Salvato');onRefresh();}}
+          onClose={()=>setActiveBooking(null)} />
+      )}
+    </div>
+  );
+}
+
+// ── SCHEDULE EDITOR ─────────────────────────────────────────────
+function ScheduleEditor({ schedule, onChange }) {
+  const addBreak    = () => onChange({...schedule, breaks:[...schedule.breaks,{start:'12:00',end:'13:00',label:'Pausa pranzo'}]});
+  const removeBreak = (i) => onChange({...schedule, breaks:schedule.breaks.filter((_,idx)=>idx!==i)});
+  const updateBreak = (i,field,val) => onChange({...schedule, breaks:schedule.breaks.map((b,idx)=>idx===i?{...b,[field]:val}:b)});
+  const toggleDay   = (i) => onChange({...schedule, days:schedule.days.map((d,idx)=>idx===i?!d:d)});
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',gap:16,paddingTop:4}}>
+      <div>
+        <p style={{fontSize:11,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5,marginBottom:10}}>Orario di apertura</p>
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          {[['Inizio','start'],['Fine','end']].map(([label,key],i)=>(
+            <React.Fragment key={key}>
+              {i>0&&<span style={{color:'var(--ink3)',marginTop:18,fontWeight:700}}>–</span>}
+              <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                <span style={{fontSize:10,color:'var(--ink3)',fontWeight:500}}>{label}</span>
+                <input type="time" value={schedule[key]} onChange={e=>onChange({...schedule,[key]:e.target.value})}
+                  style={{background:'var(--bg2)',border:'1.5px solid var(--border)',borderRadius:8,padding:'8px 10px',fontSize:14,fontWeight:600,color:'var(--ink)',outline:'none',width:100}} />
+              </div>
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+      <div>
+        <p style={{fontSize:11,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5,marginBottom:10}}>Giorni lavorativi</p>
+        <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+          {DAYS_ABBR.map((d,i)=>(
+            <button key={i} onClick={()=>toggleDay(i)}
+              style={{width:38,height:38,borderRadius:10,border:'1.5px solid',fontSize:11,fontWeight:700,
+                background:schedule.days[i]?'var(--ink)':'var(--bg2)',color:schedule.days[i]?'white':'var(--ink3)',
+                borderColor:schedule.days[i]?'var(--ink)':'var(--border)',transition:'all 0.15s'}}>
+              {d}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+          <p style={{fontSize:11,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5}}>Pause</p>
+          <button onClick={addBreak} style={{fontSize:12,fontWeight:600,color:'var(--gold)',padding:'4px 10px',borderRadius:8,border:'1px solid var(--gold-dim)',background:'var(--gold-bg)'}}>+ Aggiungi</button>
+        </div>
+        {schedule.breaks.length===0&&<p style={{fontSize:12,color:'var(--ink3)',fontStyle:'italic'}}>Nessuna pausa impostata</p>}
+        {schedule.breaks.map((br,i)=>(
+          <div key={i} style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:10,padding:12,marginBottom:8}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+              <input value={br.label} onChange={e=>updateBreak(i,'label',e.target.value)}
+                style={{fontSize:13,fontWeight:600,color:'var(--ink)',background:'transparent',border:'none',outline:'none',flex:1}} />
+              <button onClick={()=>removeBreak(i)} style={{fontSize:11,color:'oklch(45% 0.18 25)',fontWeight:600,padding:'4px 8px',borderRadius:6,border:'1px solid oklch(90% 0.04 20)',background:'oklch(98% 0.02 20)'}}>Rimuovi</button>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              {[['Inizio','start'],['Fine','end']].map(([label,key],i)=>(
+                <React.Fragment key={key}>
+                  {i>0&&<span style={{color:'var(--ink3)',marginTop:14,fontWeight:700}}>–</span>}
+                  <div style={{display:'flex',flexDirection:'column',gap:3}}>
+                    <span style={{fontSize:10,color:'var(--ink3)'}}>{label}</span>
+                    <input type="time" value={br[key]} onChange={e=>updateBreak(i,key,e.target.value)}
+                      style={{background:'var(--bg)',border:'1.5px solid var(--border)',borderRadius:8,padding:'6px 8px',fontSize:13,fontWeight:600,color:'var(--ink)',outline:'none',width:90}} />
+                  </div>
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── ADMIN STAFF ──────────────────────────────────────────────────
+function AdminStaff({ bookings, schedules, setSchedules, setToast, staff, setStaff, services, setServices }) {
+  const [section, setSection]           = useState('staff');
+  const [selected, setSelected]         = useState(null);
+  const [editingProfile, setEditProfile]= useState(null);
+  const [draftProfile, setDraftProfile] = useState(null);
+  const [editingSchedule, setEditSched] = useState(null);
+  const [draftSchedule, setDraftSched]  = useState(null);
+  const [addingStaff, setAddingStaff]   = useState(false);
+  const [newDraft, setNewDraft]         = useState({fullName:'',role:'Barber',phone:'',email:'',color:'oklch(65% 0.14 240)'});
+  const [editingService, setEditSvc]    = useState(null);
+  const [draftService, setDraftService] = useState(null);
+  const [busy, setBusy]                 = useState(false);
+
+  const buildInitials = (fullName) => {
+    const parts = fullName.trim().split(' ').filter(Boolean);
+    return parts.length>=2 ? (parts[0][0]+parts[parts.length-1][0]).toUpperCase() : fullName.slice(0,2).toUpperCase();
+  };
+  const buildShortName = (fullName) => {
+    const parts = fullName.trim().split(' ').filter(Boolean);
+    return parts.length>=2 ? parts[0]+' '+parts[parts.length-1][0]+'.' : parts[0];
+  };
+
+  const saveProfile = async () => {
+    if (!draftProfile) return;
+    setBusy(true);
+    const initials   = buildInitials(draftProfile.full_name);
+    const name       = buildShortName(draftProfile.full_name);
+    const updated    = {...draftProfile, initials, name};
+    const { error }  = await supabase.from('staff').update({full_name:updated.full_name,name,role:updated.role,phone:updated.phone,email:updated.email,color:updated.color,initials}).eq('id',editingProfile);
+    setBusy(false);
+    if (error) { setToast('Errore: '+error.message); return; }
+    setStaff(prev=>prev.map(s=>s.id===editingProfile?{...s,...updated,initials,name}:s));
+    setEditProfile(null); setDraftProfile(null); setToast('Profilo aggiornato');
+  };
+
+  const saveNewStaff = async () => {
+    if (!newDraft.fullName.trim()) return;
+    setBusy(true);
+    const initials  = buildInitials(newDraft.fullName);
+    const name      = buildShortName(newDraft.fullName);
+    const { data, error } = await supabase.from('staff').insert({full_name:newDraft.fullName,name,role:newDraft.role,phone:newDraft.phone,email:newDraft.email,color:newDraft.color,initials}).select().single();
+    if (!error&&data) {
+      await supabase.from('staff_schedules').insert({staff_id:data.id,...DEFAULT_SCHEDULE,work_days:DEFAULT_SCHEDULE.days,breaks:JSON.stringify(DEFAULT_SCHEDULE.breaks)});
+      setStaff(prev=>[...prev,data]);
+      setSchedules(prev=>({...prev,[data.id]:{...DEFAULT_SCHEDULE}}));
+      setToast('✓ Dipendente aggiunto');
+    } else { setToast('Errore: '+(error?.message||'')); }
+    setBusy(false);
+    setAddingStaff(false);
+    setNewDraft({fullName:'',role:'Barber',phone:'',email:'',color:'oklch(65% 0.14 240)'});
+  };
+
+  const deleteStaff = async (id) => {
+    if (!window.confirm('Eliminare questo dipendente? Le prenotazioni esistenti rimarranno nello storico.')) return;
+    setBusy(true);
+    await supabase.from('staff_schedules').delete().eq('staff_id', id);
+    const { error } = await supabase.from('staff').delete().eq('id', id);
+    setBusy(false);
+    if (error) { setToast('Errore: ' + error.message); return; }
+    setStaff(prev => prev.filter(s => s.id !== id));
+    setSchedules(prev => { const n = {...prev}; delete n[id]; return n; });
+    setSelected(null);
+    setToast('Dipendente eliminato');
+  };
+
+  const saveSchedule = async () => {
+    if (!draftSchedule) return;
+    setBusy(true);
+    const { error } = await supabase.from('staff_schedules').upsert({
+      staff_id:editingSchedule, start_time:draftSchedule.start, end_time:draftSchedule.end,
+      work_days:draftSchedule.days, breaks:JSON.stringify(draftSchedule.breaks), updated_at:new Date().toISOString()
+    });
+    setBusy(false);
+    if (error) { setToast('Errore: '+error.message); return; }
+    setSchedules(prev=>({...prev,[editingSchedule]:draftSchedule}));
+    setEditSched(null); setDraftSched(null); setToast('✓ Orario salvato');
+  };
+
+  const saveService = async () => {
+    if (!draftService?.name?.trim()) return;
+    setBusy(true);
+    if (editingService==='new') {
+      const { data, error } = await supabase.from('services').insert({name:draftService.name,duration:draftService.duration,price:draftService.price||null}).select().single();
+      if (!error&&data) { setServices(prev=>[...prev,data]); setToast('✓ Servizio aggiunto'); }
+      else setToast('Errore: '+(error?.message||''));
+    } else {
+      const { error } = await supabase.from('services').update({name:draftService.name,duration:draftService.duration,price:draftService.price||null}).eq('id',editingService);
+      if (!error) { setServices(prev=>prev.map(s=>s.id===editingService?{...s,...draftService}:s)); setToast('✓ Servizio salvato'); }
+      else setToast('Errore: '+(error?.message||''));
+    }
+    setBusy(false); setEditSvc(null); setDraftService(null);
+  };
+
+  const deleteService = async (id) => {
+    await supabase.from('services').update({active:false}).eq('id',id);
+    setServices(prev=>prev.filter(s=>s.id!==id));
+    setToast('Servizio rimosso');
+  };
+
+  // Schermate sub-navigazione
+  if (addingStaff) return (
+    <div className="screen">
+      <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <button className="btn-icon" onClick={()=>setAddingStaff(false)}>←</button>
+          <h2 style={{fontSize:20,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>Nuovo dipendente</h2>
+        </div>
+      </div>
+      <div className="scroll-content" style={{padding:'16px 24px 100px'}}>
+        <div style={{display:'flex',justifyContent:'center',marginBottom:24}}>
+          <div className="avatar" style={{width:72,height:72,fontSize:24,background:newDraft.color,color:'white',fontWeight:700}}>
+            {newDraft.fullName?buildInitials(newDraft.fullName):'?'}
+          </div>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:16}}>
+          <div className="input-group"><label className="input-label">Nome completo *</label>
+            <input className="input-field" value={newDraft.fullName} placeholder="es. Giovanni Bianchi" onChange={e=>setNewDraft(p=>({...p,fullName:e.target.value}))} /></div>
+          <div className="input-group"><label className="input-label">Ruolo</label>
+            <div style={{display:'flex',flexWrap:'wrap',gap:8,marginTop:4}}>
+              {ROLE_OPTIONS.map(r=><button key={r} onClick={()=>setNewDraft(p=>({...p,role:r}))} className={`chip ${newDraft.role===r?'selected':''}`}>{r}</button>)}
+            </div></div>
+          <div className="input-group"><label className="input-label">Telefono</label>
+            <input className="input-field" value={newDraft.phone} onChange={e=>setNewDraft(p=>({...p,phone:e.target.value}))} placeholder="345 000 0000" /></div>
+          <div className="input-group"><label className="input-label">Email</label>
+            <input className="input-field" type="email" value={newDraft.email} onChange={e=>setNewDraft(p=>({...p,email:e.target.value}))} placeholder="nome@hairstudios.it" /></div>
+          <div className="input-group"><label className="input-label">Colore avatar</label>
+            <div style={{display:'flex',gap:10,marginTop:4}}>
+              {COLOR_OPTIONS.map(c=><button key={c.value} onClick={()=>setNewDraft(p=>({...p,color:c.value}))}
+                style={{width:36,height:36,borderRadius:'50%',background:c.value,border:'3px solid',borderColor:newDraft.color===c.value?'var(--ink)':'transparent',transition:'border-color 0.15s'}}></button>)}
+            </div></div>
+        </div>
+      </div>
+      <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'12px 24px 28px',background:'var(--bg)',borderTop:'1px solid var(--border)'}}>
+        <button className="btn-primary" style={{opacity:newDraft.fullName.trim()&&!busy?1:0.4}} disabled={!newDraft.fullName.trim()||busy} onClick={saveNewStaff}>
+          {busy?'Salvataggio...':'Aggiungi dipendente'}
+        </button>
+      </div>
+    </div>
+  );
+
+  if (editingProfile!==null&&draftProfile) {
+    return (
+      <div className="screen">
+        <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
+          <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+            <button className="btn-icon" onClick={()=>{setEditProfile(null);setDraftProfile(null);}}>←</button>
+            <h2 style={{fontSize:20,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>Modifica profilo</h2>
+          </div>
+        </div>
+        <div className="scroll-content" style={{padding:'16px 24px 100px'}}>
+          <div style={{display:'flex',justifyContent:'center',marginBottom:24}}>
+            <div className="avatar" style={{width:72,height:72,fontSize:24,background:draftProfile.color,color:'white',fontWeight:700}}>
+              {draftProfile.initials}
+            </div>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div className="input-group"><label className="input-label">Nome completo *</label>
+              <input className="input-field" value={draftProfile.full_name} onChange={e=>setDraftProfile(p=>({...p,full_name:e.target.value}))} /></div>
+            <div className="input-group"><label className="input-label">Ruolo</label>
+              <div style={{display:'flex',flexWrap:'wrap',gap:8,marginTop:4}}>
+                {ROLE_OPTIONS.map(r=><button key={r} onClick={()=>setDraftProfile(p=>({...p,role:r}))} className={`chip ${draftProfile.role===r?'selected':''}`}>{r}</button>)}
+              </div></div>
+            <div className="input-group"><label className="input-label">Telefono</label>
+              <input className="input-field" value={draftProfile.phone||''} onChange={e=>setDraftProfile(p=>({...p,phone:e.target.value}))} placeholder="345 000 0000" /></div>
+            <div className="input-group"><label className="input-label">Email</label>
+              <input className="input-field" type="email" value={draftProfile.email||''} onChange={e=>setDraftProfile(p=>({...p,email:e.target.value}))} placeholder="nome@hairstudios.it" /></div>
+            <div className="input-group"><label className="input-label">Colore avatar</label>
+              <div style={{display:'flex',gap:10,marginTop:4}}>
+                {COLOR_OPTIONS.map(c=><button key={c.value} onClick={()=>setDraftProfile(p=>({...p,color:c.value}))}
+                  style={{width:36,height:36,borderRadius:'50%',background:c.value,border:'3px solid',borderColor:draftProfile.color===c.value?'var(--ink)':'transparent',transition:'border-color 0.15s'}}></button>)}
+              </div></div>
+            <div style={{marginTop:8,paddingTop:16,borderTop:'1px solid var(--border)'}}>
+              <button onClick={()=>deleteStaff(editingProfile)} disabled={busy}
+                style={{width:'100%',padding:'12px',borderRadius:'var(--radius-sm)',border:'1px solid oklch(90% 0.04 20)',
+                  fontSize:13,fontWeight:600,color:'oklch(45% 0.18 25)',background:'oklch(98% 0.02 20)'}}>
+                Elimina dipendente
+              </button>
+            </div>
+          </div>
+        </div>
+        <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'12px 24px 28px',background:'var(--bg)',borderTop:'1px solid var(--border)'}}>
+          <button className="btn-primary" style={{opacity:draftProfile.full_name?.trim()&&!busy?1:0.4}} disabled={!draftProfile.full_name?.trim()||busy} onClick={saveProfile}>
+            {busy?'Salvataggio...':'Salva modifiche'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (editingSchedule!==null&&draftSchedule) {
+    const s=staff.find(st=>st.id===editingSchedule);
+    return(
+      <div className="screen">
+        <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
+          <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+            <button className="btn-icon" onClick={()=>setEditSched(null)}>←</button>
+            <div><p style={{fontSize:11,color:'var(--ink3)'}}>Orario di</p>
+              <h2 style={{fontSize:20,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>{s?.name}</h2></div>
+          </div>
+        </div>
+        <div className="scroll-content" style={{padding:'12px 24px 100px'}}>
+          <ScheduleEditor schedule={draftSchedule} onChange={setDraftSched} />
+        </div>
+        <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'12px 24px 28px',background:'var(--bg)',borderTop:'1px solid var(--border)'}}>
+          <button className="btn-primary" style={{opacity:busy?0.6:1}} disabled={busy} onClick={saveSchedule}>{busy?'Salvataggio...':'Salva orario'}</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (editingService!==null&&draftService) return(
+    <div className="screen">
+      <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <button className="btn-icon" onClick={()=>{setEditSvc(null);setDraftService(null);}}>←</button>
+          <h2 style={{fontSize:20,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>{editingService==='new'?'Nuovo servizio':'Modifica servizio'}</h2>
+        </div>
+      </div>
+      <div className="scroll-content" style={{padding:'16px 24px 100px'}}>
+        <div style={{display:'flex',flexDirection:'column',gap:16}}>
+          <div className="input-group"><label className="input-label">Nome servizio *</label>
+            <input className="input-field" value={draftService.name} placeholder="es. Trattamento barba" onChange={e=>setDraftService(p=>({...p,name:e.target.value}))} /></div>
+          <div className="input-group"><label className="input-label">Durata (minuti)</label>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginTop:4}}>
+              <button onClick={()=>setDraftService(p=>({...p,duration:Math.max(5,p.duration-5)}))} style={{width:40,height:40,borderRadius:10,background:'var(--bg2)',border:'1px solid var(--border)',fontSize:20,fontWeight:700,color:'var(--ink)',display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
+              <div style={{flex:1,textAlign:'center',padding:10,background:'var(--bg2)',borderRadius:10,border:'1px solid var(--border)'}}>
+                <span style={{fontSize:24,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>{draftService.duration}</span>
+                <span style={{fontSize:12,color:'var(--ink3)',marginLeft:4}}>min</span>
+              </div>
+              <button onClick={()=>setDraftService(p=>({...p,duration:Math.min(240,p.duration+5)}))} style={{width:40,height:40,borderRadius:10,background:'var(--bg2)',border:'1px solid var(--border)',fontSize:20,fontWeight:700,color:'var(--ink)',display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+            </div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:10}}>
+              {[15,20,30,45,60,90,120].map(d=><button key={d} onClick={()=>setDraftService(p=>({...p,duration:d}))} className={`chip ${draftService.duration===d?'selected':''}`} style={{fontSize:12}}>{d} min</button>)}
+            </div></div>
+          <div className="input-group"><label className="input-label">Prezzo (€)</label>
+            <input className="input-field" type="number" min="0" step="0.50" value={draftService.price||''} placeholder="es. 18.00" onChange={e=>setDraftService(p=>({...p,price:e.target.value}))} /></div>
+        </div>
+      </div>
+      <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'12px 24px 28px',background:'var(--bg)',borderTop:'1px solid var(--border)'}}>
+        <button className="btn-primary" style={{opacity:draftService.name.trim()&&!busy?1:0.4}} disabled={!draftService.name.trim()||busy} onClick={saveService}>
+          {busy?'Salvataggio...':'Salva servizio'}
+        </button>
+      </div>
+    </div>
+  );
+
+  return(
+    <div className="screen">
+      <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
+        <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',marginBottom:16,letterSpacing:-0.3}}>Gestione Staff</h2>
+        <div style={{display:'flex',background:'var(--bg2)',borderRadius:10,padding:4,marginBottom:16}}>
+          {[['staff','Staff'],['services','Servizi']].map(([id,label])=>(
+            <button key={id} onClick={()=>setSection(id)}
+              style={{flex:1,padding:'8px 0',borderRadius:8,fontSize:13,fontWeight:600,
+                background:section===id?'var(--bg)':'transparent',color:section===id?'var(--ink)':'var(--ink3)',
+                boxShadow:section===id?'var(--shadow)':'none',transition:'all 0.2s'}}>{label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="scroll-content" style={{padding:'0 24px 24px'}}>
+        {section==='staff'&&(
+          <>
+            <button className="btn-secondary" style={{marginBottom:16}} onClick={()=>setAddingStaff(true)}>+ Aggiungi dipendente</button>
+            {staff.map(s=>{
+              const sBks=bookings.filter(b=>b.staff_id===s.id&&b.status!=='cancelled');
+              const sch=schedules[s.id]||DEFAULT_SCHEDULE;
+              const isOpen=selected===s.id;
+              return(
+                <div key={s.id} className="card" style={{marginBottom:12}}>
+                  <button style={{display:'flex',alignItems:'center',gap:14,width:'100%',textAlign:'left'}} onClick={()=>setSelected(isOpen?null:s.id)}>
+                    <div className="avatar" style={{width:56,height:56,fontSize:18,background:s.color,color:'white',fontWeight:700}}>{s.initials}</div>
+                    <div style={{flex:1}}>
+                      <p style={{fontSize:16,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>{s.name}</p>
+                      <p style={{fontSize:12,color:'var(--ink3)',marginTop:2}}>{s.role}</p>
+                      <div style={{display:'flex',gap:8,marginTop:6,flexWrap:'wrap'}}>
+                        <span className="badge badge-gray">{sBks.length} prenotazioni</span>
+                        <span className="badge badge-green">{sBks.filter(b=>b.status==='confirmed').length} confermate</span>
+                      </div>
+                    </div>
+                    <span style={{fontSize:18,color:'var(--ink3)',transform:isOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.2s'}}>↓</span>
+                  </button>
+                  {isOpen&&(
+                    <div style={{marginTop:16,paddingTop:16,borderTop:'1px solid var(--border)'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                        <div>
+                          <p style={{fontSize:11,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5,marginBottom:4}}>Orario</p>
+                          <p style={{fontSize:14,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>{sch.start} – {sch.end}</p>
+                          <p style={{fontSize:11,color:'var(--ink3)',marginTop:2}}>{sch.days?.filter(Boolean).length||0} giorni</p>
+                        </div>
+                        <div style={{display:'flex',gap:8}}>
+                          <button onClick={()=>{setEditProfile(s.id);setDraftProfile({...s});}}
+                            style={{padding:'8px 12px',borderRadius:10,background:'var(--bg2)',color:'var(--ink)',fontSize:12,fontWeight:700,border:'1px solid var(--border)'}}>Profilo</button>
+                          <button onClick={()=>{setEditSched(s.id);setDraftSched({...sch,days:[...(sch.days||DEFAULT_SCHEDULE.days)],breaks:[...(sch.breaks||[])]});}}
+                            style={{padding:'8px 12px',borderRadius:10,background:'var(--ink)',color:'white',fontSize:12,fontWeight:700,border:'none'}}>Orario</button>
+                        </div>
+                      </div>
+                      <div style={{display:'flex',gap:4}}>
+                        {DAYS_ABBR.map((d,i)=>(
+                          <div key={i} style={{flex:1,textAlign:'center',padding:'6px 2px',borderRadius:8,background:(sch.days||[])[i]?'var(--ink)':'var(--bg3)',border:'1px solid var(--border)'}}>
+                            <p style={{fontSize:9,fontWeight:700,color:(sch.days||[])[i]?'white':'var(--ink3)'}}>{d}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {section==='services'&&(
+          <>
+            <button className="btn-secondary" style={{marginBottom:16}} onClick={()=>{setEditSvc('new');setDraftService({name:'',duration:30,price:''});}}>+ Aggiungi servizio</button>
+            {services.map(s=>(
+              <div key={s.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',background:'var(--bg2)',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',marginBottom:10}}>
+                <div>
+                  <p style={{fontSize:14,fontWeight:600,color:'var(--ink)'}}>{s.name}</p>
+                  <p style={{fontSize:12,color:'var(--ink3)'}}>{s.duration} min{s.price?` · €${Number(s.price).toFixed(2)}`:''}</p>
+                </div>
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={()=>{setEditSvc(s.id);setDraftService({...s});}}
+                    style={{padding:'6px 12px',borderRadius:8,border:'1px solid var(--border)',fontSize:12,fontWeight:600,color:'var(--ink)',background:'var(--bg)'}}>Modifica</button>
+                  <button onClick={()=>deleteService(s.id)}
+                    style={{padding:'6px 12px',borderRadius:8,border:'1px solid oklch(90% 0.04 20)',fontSize:12,fontWeight:600,color:'oklch(45% 0.18 25)',background:'oklch(98% 0.02 20)'}}>Rimuovi</button>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── ADMIN ACCOUNT ────────────────────────────────────────────────
+function AdminAccount({ profile, onLogout }) {
+  const logout = async () => { await supabase.auth.signOut(); onLogout(); };
+  return (
+    <div className="screen">
+      <div className="scroll-content" style={{padding:'24px 24px 40px'}}>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',paddingTop:24,marginBottom:28}}>
+          <div className="avatar" style={{width:80,height:80,fontSize:28,background:'var(--ink)',color:'white',fontWeight:700,marginBottom:12}}>
+            {profile.name.split(' ').map(n=>n[0]).join('').slice(0,2)}
+          </div>
+          <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>{profile.name}</h2>
+          <p style={{fontSize:13,color:'var(--ink3)',marginTop:4}}>{profile.email||''}</p>
+          <span className="badge badge-gold" style={{marginTop:8}}>Admin</span>
+        </div>
+        <div className="card" style={{marginBottom:16}}>
+          {[['Email', profile.email||'—'],['Telefono', profile.phone||'—']].map(([k,v])=>(
+            <div key={k}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0'}}>
+                <span style={{fontSize:12,color:'var(--ink3)',fontWeight:500}}>{k}</span>
+                <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{v}</span>
+              </div>
+              <div className="divider" style={{margin:0}}></div>
+            </div>
+          ))}
+        </div>
+        <button className="btn-secondary" onClick={logout}>Esci dall'account</button>
+      </div>
+    </div>
+  );
+}
+
+// ── ADMIN HISTORY ────────────────────────────────────────────────
+function AdminHistory({ bookings, staff }) {
+  const [filter, setFilter] = useState('all');
+  const sorted   = [...bookings].sort((a,b)=>new Date(b.date+' '+b.time)-new Date(a.date+' '+a.time));
+  const filtered = filter==='all' ? sorted : sorted.filter(b=>b.status===filter);
+
+  return(
+    <div className="screen">
+      <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
+        <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',marginBottom:16,letterSpacing:-0.3}}>Storico prenotazioni</h2>
+        <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingBottom:2}}>
+          {[{id:'all',label:'Tutte'},{id:'confirmed',label:'Confermate'},{id:'pending',label:'In attesa'},{id:'cancelled',label:'Annullate'}].map(f=>(
+            <button key={f.id} onClick={()=>setFilter(f.id)} className={`chip ${filter===f.id?'selected':''}`}>{f.label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="scroll-content" style={{padding:'0 24px 24px'}}>
+        {filtered.map(b=>{
+          const s=staff.find(st=>st.id===b.staff_id);
+          return(
+            <div key={b.id} style={{display:'flex',gap:12,alignItems:'flex-start',padding:'14px 0',borderBottom:'1px solid var(--border)'}}>
+              <div style={{width:3,background:b.status==='confirmed'?'oklch(60% 0.14 145)':b.status==='cancelled'?'oklch(55% 0.18 25)':'var(--gold)',borderRadius:99,alignSelf:'stretch',flexShrink:0}}></div>
+              <div style={{flex:1}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                  <div>
+                    <p style={{fontSize:14,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>{b.client_name}</p>
+                    <p style={{fontSize:12,color:'var(--ink3)',marginTop:2}}>{b.service_name} · {s?.name||'—'}</p>
+                    <p style={{fontSize:11,color:'var(--ink3)',marginTop:1}}>{new Date(b.date).toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'long'})} · {b.time?.slice(0,5)}</p>
+                  </div>
+                  <span className={`badge ${b.status==='confirmed'?'badge-green':b.status==='cancelled'?'badge-red':'badge-gold'}`} style={{fontSize:10,marginTop:4}}>
+                    {b.status==='confirmed'?'Confermata':b.status==='cancelled'?'Annullata':'In attesa'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length===0&&<p style={{textAlign:'center',padding:'40px 0',color:'var(--ink3)',fontSize:13}}>Nessuna prenotazione trovata</p>}
+      </div>
+    </div>
+  );
+}
+
+// ── ROOT APP ─────────────────────────────────────────────────────
+function App() {
+  const [authUser, setAuthUser]   = useState(null);
+  const [profile, setProfile]     = useState(null);
+  const [loading, setLoading]     = useState(true);
+  const [dataLoading, setDataLoad]= useState(false);
+  const [tab, setTab]             = useState('home');
+  const [staff, setStaff]         = useState([]);
+  const [services, setServices]   = useState([]);
+  const [bookings, setBookings]   = useState([]);
+  const [schedules, setSchedules] = useState({});
+  const [toast, setToast]         = useState(null);
+
+  // Controlla sessione all'avvio
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) loadProfile(session.user);
+      else setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) loadProfile(session.user);
+      else { setAuthUser(null); setProfile(null); setLoading(false); }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const loadProfile = async (user) => {
+    setAuthUser(user);
+    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    if (data) {
+      data.email = user.email;
+      setProfile(data);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (profile) {
+      setTab(profile.is_admin ? 'admin-dash' : 'home');
+      loadAppData();
+    }
+  }, [profile?.id]);
+
+  const loadAppData = async () => {
+    setDataLoad(true);
+    const [staffRes, svcRes, bkRes, schRes] = await Promise.all([
+      supabase.from('staff').select('*').eq('active', true).order('id'),
+      supabase.from('services').select('*').eq('active', true).order('id'),
+      profile?.is_admin
+        ? supabase.from('bookings').select('*, profiles(name, phone)').order('date', {ascending:false}).order('time', {ascending:true})
+        : supabase.from('bookings').select('*, staff(name, color, initials)').eq('user_id', profile?.id).order('date', {ascending:false}),
+      supabase.from('staff_schedules').select('*'),
+    ]);
+
+    if (staffRes.data)   setStaff(staffRes.data);
+    if (svcRes.data)     setServices(svcRes.data);
+    if (bkRes.data)      setBookings(bkRes.data);
+    if (schRes.data) {
+      const schMap = {};
+      schRes.data.forEach(s => {
+        schMap[s.staff_id] = {
+          start: s.start_time?.slice(0,5)||'08:00',
+          end:   s.end_time?.slice(0,5)||'20:00',
+          days:  s.work_days||DEFAULT_SCHEDULE.days,
+          breaks:typeof s.breaks==='string'?JSON.parse(s.breaks):s.breaks||[],
+        };
+      });
+      setSchedules(schMap);
+    }
+    setDataLoad(false);
+  };
+
+  const handleLogin  = (user) => setAuthUser(user);
+  const handleLogout = () => { setAuthUser(null); setProfile(null); setStaff([]); setServices([]); setBookings([]); };
+
+  if (loading) return <LoadingScreen />;
+  if (!profile) return (
+    <div style={{position:'relative',flex:1,display:'flex',flexDirection:'column'}}>
+      <AuthScreen onLogin={handleLogin} />
+    </div>
+  );
+
+  if (dataLoading && !staff.length) return <LoadingScreen />;
+
+  const isAdmin = profile.is_admin;
+
+  const screens = isAdmin ? {
+    'admin-dash':    <AdminDash    bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} />,
+    'admin-cal':     <AdminCalendar bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} />,
+    'admin-staff':   <AdminStaff   bookings={bookings} schedules={schedules} setSchedules={setSchedules} setToast={setToast} staff={staff} setStaff={setStaff} services={services} setServices={setServices} />,
+    'admin-history': <AdminHistory bookings={bookings} staff={staff} />,
+    'admin-account': <AdminAccount profile={profile} onLogout={handleLogout} />,
+  } : {
+    'home':     <UserHome     user={authUser} profile={profile} bookings={bookings} setTab={setTab} staff={staff} services={services} />,
+    'booking':  <BookingFlow  profile={profile} bookings={bookings} onBooked={loadAppData} setToast={setToast} staff={staff} services={services} setTab={setTab} />,
+    'calendar': <UserCalendar profile={profile} bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} />,
+    'profile':  <UserProfile  profile={profile} bookings={bookings} onLogout={handleLogout} />,
+  };
+
+  return (
+    <div style={{position:'relative',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div style={{flex:1,position:'relative',overflow:'hidden'}}>
+        {Object.entries(screens).map(([key, screen]) => (
+          <div key={key} style={{
+            position:'absolute', inset:0,
+            transition:'opacity 0.25s, transform 0.25s cubic-bezier(.4,0,.2,1)',
+            opacity:tab===key?1:0,
+            transform:tab===key?'none':'translateY(8px)',
+            pointerEvents:tab===key?'auto':'none',
+            zIndex:tab===key?1:0,
+          }}>
+            {screen}
+          </div>
+        ))}
+      </div>
+      <BottomNav tab={tab} setTab={setTab} isAdmin={isAdmin} />
+      {toast && <Toast message={toast} onDone={()=>setToast(null)} />}
+    </div>
+  );
+}
+
+function ConfigScreen() {
+  return (
+    <div style={{minHeight:'100dvh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,background:'var(--bg)',textAlign:'center'}}>
+      <div style={{fontSize:48,marginBottom:20}}>✂️</div>
+      <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:32,fontWeight:700,color:'var(--ink)',marginBottom:8}}>Hair Studios</h1>
+      <p style={{fontSize:15,color:'var(--ink2)',marginBottom:32,lineHeight:1.6}}>Per avviare l'app devi configurare<br/>le credenziali Supabase.</p>
+      <div style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:24,maxWidth:400,width:'100%',textAlign:'left'}}>
+        <p style={{fontSize:12,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5,marginBottom:16}}>Come fare</p>
+        {[
+          ['1','Vai su supabase.com e crea un progetto'],
+          ['2','SQL Editor → incolla schema.sql → Run'],
+          ['3','Settings → API → copia URL e anon key'],
+          ['4','Apri index.html e sostituisci le due stringhe INSERISCI_...'],
+        ].map(([n,t])=>(
+          <div key={n} style={{display:'flex',gap:12,marginBottom:14,alignItems:'flex-start'}}>
+            <span style={{minWidth:24,height:24,borderRadius:'50%',background:'var(--ink)',color:'white',fontSize:12,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center'}}>{n}</span>
+            <p style={{fontSize:13,color:'var(--ink)',lineHeight:1.5,marginTop:2}}>{t}</p>
+          </div>
+        ))}
+      </div>
+      <p style={{marginTop:24,fontSize:12,color:'var(--ink3)'}}>Dopo aver salvato, ricarica questa pagina.</p>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  CONFIG_READY ? <App /> : <ConfigScreen />
+);
+</script>
+</body>
+</html>
