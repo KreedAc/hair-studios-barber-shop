@@ -1,4 +1,4 @@
-const CACHE = 'hairstudios-v1';
+const CACHE = 'hairstudios-v2';
 const PRECACHE = ['/'];
 
 self.addEventListener('install', e => {
