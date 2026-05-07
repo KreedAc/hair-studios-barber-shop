@@ -176,6 +176,33 @@ const DAYS_FULL  = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sab
 const MONTHS     = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 const DEFAULT_SCHEDULE = { start:'08:00', end:'20:00', days:[true,true,true,true,true,true,false], breaks:[] };
 
+const DEFAULT_WEEKLY_CONFIG = {
+  "0":null,"1":null,
+  "2":{"start":"09:30","end":"19:30","breaks":[{"start":"12:30","end":"15:00"}]},
+  "3":{"start":"09:30","end":"19:30","breaks":[{"start":"12:30","end":"15:00"}]},
+  "4":{"start":"09:30","end":"19:30","breaks":[{"start":"12:30","end":"15:00"}]},
+  "5":{"start":"09:30","end":"19:30","breaks":[{"start":"12:30","end":"15:00"}]},
+  "6":{"start":"09:30","end":"18:00","breaks":[{"start":"13:00","end":"14:00"}]}
+};
+
+// Verifica se uno slot è disponibile rispettando orario settimanale, pause fisse e blocchi extra
+function checkSlot(date, time, staffId, duration, bookings, schedules, dayBlocks) {
+  const dow = new Date(date + 'T12:00:00').getDay();
+  const cfg = (schedules[staffId]||{})[dow];
+  if (!cfg) return false;
+  const t2m = t => { const [h,m]=t.split(':').map(Number); return h*60+m; };
+  const ss = t2m(time), se = ss + duration;
+  if (ss < t2m(cfg.start) || se > t2m(cfg.end)) return false;
+  for (const b of cfg.breaks||[]) if (ss < t2m(b.end) && se > t2m(b.start)) return false;
+  for (const b of (dayBlocks[staffId]||[]).filter(b=>b.date===date))
+    if (ss < t2m(b.end_time.slice(0,5)) && se > t2m(b.start_time.slice(0,5))) return false;
+  return !bookings.some(b => {
+    if (b.staff_id!==staffId||b.date!==date||b.status==='cancelled') return false;
+    const bs=t2m((b.time||'').slice(0,5)), be=bs+b.service_duration;
+    return ss<be && se>bs;
+  });
+}
+
 const ROLE_OPTIONS  = ['Senior Barber','Barber','Titolare','Apprendista'];
 const COLOR_OPTIONS = [
   { label:'Blu',     value:'oklch(65% 0.14 240)' },
@@ -417,7 +444,7 @@ function UserHome({ user, profile, bookings, setTab, staff, services }) {
 }
 
 // ── BOOKING FLOW ────────────────────────────────────────────────
-function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, setTab }) {
+function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, setTab, schedules, dayBlocks }) {
   const [step, setStep]                   = useState(0);
   const [selectedServices, setSel]        = useState([]);
   const [selectedStaff, setSelectedStaff] = useState(null);
@@ -439,17 +466,6 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
     ALL_SLOTS.push(`${String(h).padStart(2,'0')}:00`);
     ALL_SLOTS.push(`${String(h).padStart(2,'0')}:30`);
   }
-
-  const isSlotAvailable = (d, t, sId) => {
-    const [h,m] = t.split(':').map(Number);
-    const start = h*60+m, end = start+totalDuration;
-    return !bookings.some(b => {
-      if (b.staff_id!==sId||b.date!==d||b.status==='cancelled') return false;
-      const [bh,bm] = (b.time||'').slice(0,5).split(':').map(Number);
-      const bs=bh*60+bm, be=bs+b.service_duration;
-      return start<be && end>bs;
-    });
-  };
 
   const confirm = async () => {
     if (!selectedStaff||!date||!time||!selectedServices.length) return;
@@ -567,17 +583,20 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
               {weekDates.map((d,i) => {
                 const today = new Date(); today.setHours(0,0,0,0);
                 const isPast = d < today;
-                const isSel = selectedDay===i && !isPast;
+                const dow = d.getDay();
+                const isClosed = selectedStaff && !(schedules[selectedStaff.id]||{})[dow];
+                const disabled = isPast || isClosed;
+                const isSel = selectedDay===i && !disabled;
                 const isToday = d.toDateString()===new Date().toDateString();
                 return (
-                  <button key={i} disabled={isPast}
-                    onClick={()=>{ if(!isPast){setSelectedDay(i);setTime(null);setDate(null);}}}
+                  <button key={i} disabled={disabled}
+                    onClick={()=>{ if(!disabled){setSelectedDay(i);setTime(null);setDate(null);}}}
                     style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,padding:'10px 12px',
                       borderRadius:12,border:'1.5px solid',flexShrink:0,minWidth:46,
-                      borderColor:isSel?'var(--ink)':isToday?'var(--gold-dim)':'var(--border)',
-                      background:isSel?'var(--ink)':isToday?'var(--gold-bg)':'var(--bg)',
-                      opacity:isPast?0.3:1,cursor:isPast?'not-allowed':'pointer',transition:'all 0.15s'}}>
-                    <span style={{fontSize:10,fontWeight:600,color:isSel?'rgba(255,255,255,0.6)':isToday?'var(--gold)':'var(--ink3)',textTransform:'uppercase',letterSpacing:0.3}}>{DAYS_SHORT[i]}</span>
+                      borderColor:isSel?'var(--ink)':isToday&&!disabled?'var(--gold-dim)':'var(--border)',
+                      background:isSel?'var(--ink)':isToday&&!disabled?'var(--gold-bg)':'var(--bg)',
+                      opacity:disabled?0.3:1,cursor:disabled?'not-allowed':'pointer',transition:'all 0.15s'}}>
+                    <span style={{fontSize:10,fontWeight:600,color:isSel?'rgba(255,255,255,0.6)':isToday&&!disabled?'var(--gold)':'var(--ink3)',textTransform:'uppercase',letterSpacing:0.3}}>{DAYS_SHORT[i]}</span>
                     <span style={{fontSize:18,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:isSel?'white':'var(--ink)'}}>{d.getDate()}</span>
                   </button>
                 );
@@ -587,12 +606,11 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:24}}>
               {ALL_SLOTS.map(h => {
                 const dStr=weekDates[selectedDay].toISOString().split('T')[0];
-                const [hh,mm]=h.split(':').map(Number);
-                const withinHours=(hh*60+mm+totalDuration)<=20*60;
                 const now=new Date();
                 const isToday=weekDates[selectedDay].toDateString()===now.toDateString();
+                const [hh,mm]=h.split(':').map(Number);
                 const isPastTime=isToday&&(hh*60+mm)<=(now.getHours()*60+now.getMinutes());
-                const avail=withinHours&&!isPastTime&&isSlotAvailable(dStr,h,selectedStaff.id);
+                const avail=!isPastTime&&checkSlot(dStr,h,selectedStaff.id,totalDuration,bookings,schedules,dayBlocks);
                 const isSel=time===h&&date===dStr;
                 return (
                   <button key={h} disabled={!avail} onClick={()=>{setTime(h);setDate(dStr);}}
@@ -805,7 +823,7 @@ function UserProfile({ profile, bookings, onLogout }) {
 }
 
 // ── BOOKING ACTION MODAL (admin) ────────────────────────────────
-function BookingActionModal({ booking, bookings, onSave, onClose, staff }) {
+function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedules, dayBlocks }) {
   const [mode, setMode]         = useState('menu');
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState(0);
@@ -813,9 +831,6 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff }) {
   const [newStaff, setNewStaff] = useState(booking.staff_id);
   const [busy, setBusy]         = useState(false);
   const weekDates = getWeekDates(weekOffset);
-
-  const isSlotTaken = (d,t,sId) =>
-    bookings.some(b=>b.id!==booking.id&&b.date===d&&b.time?.slice(0,5)===t&&b.staff_id===sId&&b.status!=='cancelled');
 
   const confirmReschedule = async () => {
     const dateStr=weekDates[selectedDay].toISOString().split('T')[0];
@@ -901,12 +916,14 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff }) {
               {weekDates.map((d,i)=>{
                 const today=new Date(); today.setHours(0,0,0,0);
                 const isPast=d<today;
-                const isSel=selectedDay===i&&!isPast;
+                const isClosed=!(schedules[newStaff]||{})[d.getDay()];
+                const disabled=isPast||isClosed;
+                const isSel=selectedDay===i&&!disabled;
                 return(
-                  <button key={i} disabled={isPast} onClick={()=>{if(!isPast){setSelectedDay(i);setNewTime(null);}}}
+                  <button key={i} disabled={disabled} onClick={()=>{if(!disabled){setSelectedDay(i);setNewTime(null);}}}
                     style={{flex:1,minWidth:36,padding:'6px 2px',borderRadius:8,border:'1.5px solid',textAlign:'center',
                       background:isSel?'var(--ink)':'var(--bg2)',borderColor:isSel?'var(--ink)':'var(--border)',
-                      opacity:isPast?0.3:1,cursor:isPast?'not-allowed':'pointer'}}>
+                      opacity:disabled?0.3:1,cursor:disabled?'not-allowed':'pointer'}}>
                     <p style={{fontSize:9,fontWeight:600,color:isSel?'rgba(255,255,255,0.6)':'var(--ink3)',textTransform:'uppercase'}}>{DAYS_SHORT[i]}</p>
                     <p style={{fontSize:14,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:isSel?'white':'var(--ink)'}}>{d.getDate()}</p>
                   </button>
@@ -916,19 +933,18 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff }) {
             <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,overflowY:'auto',flex:1,paddingBottom:4}}>
               {HOURS.map(h=>{
                 const dStr=weekDates[selectedDay].toISOString().split('T')[0];
-                const taken=isSlotTaken(dStr,h,newStaff);
                 const now=new Date();
                 const isToday=weekDates[selectedDay].toDateString()===now.toDateString();
                 const [hh,mm]=h.split(':').map(Number);
                 const isPastTime=isToday&&(hh*60+mm)<=(now.getHours()*60+now.getMinutes());
-                const disabled=taken||isPastTime;
+                const avail=!isPastTime&&checkSlot(dStr,h,newStaff,booking.service_duration,bookings.filter(b=>b.id!==booking.id),schedules,dayBlocks);
+                const disabled=!avail;
                 const sel=newTime===h;
                 return(
                   <button key={h} disabled={disabled} onClick={()=>!disabled&&setNewTime(h)}
                     style={{padding:'10px 4px',borderRadius:8,border:'1.5px solid',textAlign:'center',fontSize:12,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",
                       background:sel?'var(--ink)':disabled?'var(--bg3)':'var(--bg2)',color:sel?'white':disabled?'var(--ink3)':'var(--ink)',
-                      borderColor:sel?'var(--ink)':'var(--border)',opacity:disabled?0.4:1,cursor:disabled?'not-allowed':'pointer',
-                      textDecoration:taken?'line-through':'none'}}>
+                      borderColor:sel?'var(--ink)':'var(--border)',opacity:disabled?0.4:1,cursor:disabled?'not-allowed':'pointer'}}>
                     {h}
                   </button>
                 );
@@ -945,7 +961,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff }) {
 }
 
 // ── ADMIN MANUAL BOOKING ────────────────────────────────────────
-function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onClose }) {
+function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onClose, schedules, dayBlocks }) {
   const [step, setStep]           = useState(0);
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
@@ -966,17 +982,6 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
 
   const SLOTS = [];
   for(let h=8;h<20;h++){ SLOTS.push(`${String(h).padStart(2,'0')}:00`); SLOTS.push(`${String(h).padStart(2,'0')}:30`); }
-
-  const isSlotAvailable = (d, t, sId) => {
-    const [h,m] = t.split(':').map(Number);
-    const start = h*60+m, end = start+totalDuration;
-    return !bookings.some(b => {
-      if (b.staff_id!==sId||b.date!==d||b.status==='cancelled') return false;
-      const [bh,bm] = (b.time||'').slice(0,5).split(':').map(Number);
-      const bs=bh*60+bm, be=bs+b.service_duration;
-      return start<be && end>bs;
-    });
-  };
 
   const confirm = async () => {
     if (!clientName.trim()||!selectedStaff||!date||!time||!selectedServices.length) return;
@@ -1094,16 +1099,18 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
               {weekDates.map((d,i)=>{
                 const today=new Date(); today.setHours(0,0,0,0);
                 const isPast=d<today;
-                const isSel=selectedDay===i&&!isPast;
+                const isClosed=selectedStaff&&!(schedules[selectedStaff.id]||{})[d.getDay()];
+                const disabled=isPast||isClosed;
+                const isSel=selectedDay===i&&!disabled;
                 const isToday=d.toDateString()===new Date().toDateString();
                 return(
-                  <button key={i} disabled={isPast} onClick={()=>{if(!isPast){setSelectedDay(i);setTime(null);setDate(null);}}}
+                  <button key={i} disabled={disabled} onClick={()=>{if(!disabled){setSelectedDay(i);setTime(null);setDate(null);}}}
                     style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,padding:'10px 12px',
                       borderRadius:12,border:'1.5px solid',flexShrink:0,minWidth:46,
-                      borderColor:isSel?'var(--ink)':isToday?'var(--gold-dim)':'var(--border)',
-                      background:isSel?'var(--ink)':isToday?'var(--gold-bg)':'var(--bg)',
-                      opacity:isPast?0.3:1,cursor:isPast?'not-allowed':'pointer'}}>
-                    <span style={{fontSize:10,fontWeight:600,color:isSel?'rgba(255,255,255,0.6)':isToday?'var(--gold)':'var(--ink3)',textTransform:'uppercase',letterSpacing:0.3}}>{DAYS_SHORT[i]}</span>
+                      borderColor:isSel?'var(--ink)':isToday&&!disabled?'var(--gold-dim)':'var(--border)',
+                      background:isSel?'var(--ink)':isToday&&!disabled?'var(--gold-bg)':'var(--bg)',
+                      opacity:disabled?0.3:1,cursor:disabled?'not-allowed':'pointer'}}>
+                    <span style={{fontSize:10,fontWeight:600,color:isSel?'rgba(255,255,255,0.6)':isToday&&!disabled?'var(--gold)':'var(--ink3)',textTransform:'uppercase',letterSpacing:0.3}}>{DAYS_SHORT[i]}</span>
                     <span style={{fontSize:18,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:isSel?'white':'var(--ink)'}}>{d.getDate()}</span>
                   </button>
                 );
@@ -1113,9 +1120,7 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:24}}>
               {SLOTS.map(h=>{
                 const dStr=weekDates[selectedDay].toISOString().split('T')[0];
-                const [hh,mm]=h.split(':').map(Number);
-                const withinHours=(hh*60+mm+totalDuration)<=20*60;
-                const avail=withinHours&&isSlotAvailable(dStr,h,selectedStaff.id);
+                const avail=checkSlot(dStr,h,selectedStaff.id,totalDuration,bookings,schedules,dayBlocks);
                 const isSel=time===h&&date===dStr;
                 return(
                   <button key={h} disabled={!avail} onClick={()=>{setTime(h);setDate(dStr);}}
@@ -1141,7 +1146,7 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
 }
 
 // ── ADMIN DASHBOARD ─────────────────────────────────────────────
-function AdminDash({ bookings, onRefresh, setToast, staff, services }) {
+function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, dayBlocks }) {
   const today = TODAY();
   const todayBks   = bookings.filter(b=>b.date===today&&b.status!=='cancelled');
   const pending    = bookings.filter(b=>b.status==='pending');
@@ -1154,6 +1159,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services }) {
       staff={staff} services={services} bookings={bookings}
       onBooked={onRefresh} setToast={setToast}
       onClose={()=>setManualBooking(false)}
+      schedules={schedules} dayBlocks={dayBlocks}
     />
   );
 
@@ -1248,6 +1254,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services }) {
       </div>
       {activeBooking&&(
         <BookingActionModal booking={activeBooking} bookings={bookings} staff={staff}
+          schedules={schedules} dayBlocks={dayBlocks}
           onSave={()=>{setActiveBooking(null);setToast('✓ Salvato');onRefresh();}}
           onClose={()=>setActiveBooking(null)} />
       )}
@@ -1256,7 +1263,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services }) {
 }
 
 // ── ADMIN CALENDAR ───────────────────────────────────────────────
-function AdminCalendar({ bookings, onRefresh, setToast, staff }) {
+function AdminCalendar({ bookings, onRefresh, setToast, staff, schedules, dayBlocks }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState(0);
   const [activeBooking, setActiveBooking] = useState(null);
@@ -1340,6 +1347,7 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff }) {
       </div>
       {activeBooking&&(
         <BookingActionModal booking={activeBooking} bookings={bookings} staff={staff}
+          schedules={schedules} dayBlocks={dayBlocks}
           onSave={()=>{setActiveBooking(null);setToast('✓ Salvato');onRefresh();}}
           onClose={()=>setActiveBooking(null)} />
       )}
@@ -1347,77 +1355,67 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff }) {
   );
 }
 
-// ── SCHEDULE EDITOR ─────────────────────────────────────────────
-function ScheduleEditor({ schedule, onChange }) {
-  const addBreak    = () => onChange({...schedule, breaks:[...schedule.breaks,{start:'12:00',end:'13:00',label:'Pausa pranzo'}]});
-  const removeBreak = (i) => onChange({...schedule, breaks:schedule.breaks.filter((_,idx)=>idx!==i)});
-  const updateBreak = (i,field,val) => onChange({...schedule, breaks:schedule.breaks.map((b,idx)=>idx===i?{...b,[field]:val}:b)});
-  const toggleDay   = (i) => onChange({...schedule, days:schedule.days.map((d,idx)=>idx===i?!d:d)});
-
-  return(
-    <div style={{display:'flex',flexDirection:'column',gap:16,paddingTop:4}}>
-      <div>
-        <p style={{fontSize:11,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5,marginBottom:10}}>Orario di apertura</p>
-        <div style={{display:'flex',alignItems:'center',gap:12}}>
-          {[['Inizio','start'],['Fine','end']].map(([label,key],i)=>(
-            <React.Fragment key={key}>
-              {i>0&&<span style={{color:'var(--ink3)',marginTop:18,fontWeight:700}}>–</span>}
-              <div style={{display:'flex',flexDirection:'column',gap:4}}>
-                <span style={{fontSize:10,color:'var(--ink3)',fontWeight:500}}>{label}</span>
-                <input type="time" value={schedule[key]} onChange={e=>onChange({...schedule,[key]:e.target.value})}
-                  style={{background:'var(--bg2)',border:'1.5px solid var(--border)',borderRadius:8,padding:'8px 10px',fontSize:14,fontWeight:600,color:'var(--ink)',outline:'none',width:100}} />
-              </div>
-            </React.Fragment>
-          ))}
-        </div>
-      </div>
-      <div>
-        <p style={{fontSize:11,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5,marginBottom:10}}>Giorni lavorativi</p>
-        <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
-          {DAYS_ABBR.map((d,i)=>(
-            <button key={i} onClick={()=>toggleDay(i)}
-              style={{width:38,height:38,borderRadius:10,border:'1.5px solid',fontSize:11,fontWeight:700,
-                background:schedule.days[i]?'var(--ink)':'var(--bg2)',color:schedule.days[i]?'white':'var(--ink3)',
-                borderColor:schedule.days[i]?'var(--ink)':'var(--border)',transition:'all 0.15s'}}>
-              {d}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-          <p style={{fontSize:11,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5}}>Pause</p>
-          <button onClick={addBreak} style={{fontSize:12,fontWeight:600,color:'var(--gold)',padding:'4px 10px',borderRadius:8,border:'1px solid var(--gold-dim)',background:'var(--gold-bg)'}}>+ Aggiungi</button>
-        </div>
-        {schedule.breaks.length===0&&<p style={{fontSize:12,color:'var(--ink3)',fontStyle:'italic'}}>Nessuna pausa impostata</p>}
-        {schedule.breaks.map((br,i)=>(
-          <div key={i} style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:10,padding:12,marginBottom:8}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-              <input value={br.label} onChange={e=>updateBreak(i,'label',e.target.value)}
-                style={{fontSize:13,fontWeight:600,color:'var(--ink)',background:'transparent',border:'none',outline:'none',flex:1}} />
-              <button onClick={()=>removeBreak(i)} style={{fontSize:11,color:'oklch(45% 0.18 25)',fontWeight:600,padding:'4px 8px',borderRadius:6,border:'1px solid oklch(90% 0.04 20)',background:'oklch(98% 0.02 20)'}}>Rimuovi</button>
+// ── WEEKLY CONFIG EDITOR ────────────────────────────────────────
+function WeeklyConfigEditor({ config, onChange }) {
+  const WEEK = [
+    {dow:1,label:'Lunedì'},{dow:2,label:'Martedì'},{dow:3,label:'Mercoledì'},
+    {dow:4,label:'Giovedì'},{dow:5,label:'Venerdì'},{dow:6,label:'Sabato'},{dow:0,label:'Domenica'},
+  ];
+  const setDay = (dow, val) => onChange({...config, [dow]: val});
+  const timeInput = (value, onCh) => (
+    <input type="time" value={value} onChange={e=>onCh(e.target.value)}
+      style={{background:'var(--bg)',border:'1.5px solid var(--border)',borderRadius:8,
+        padding:'7px 10px',fontSize:13,fontWeight:600,color:'var(--ink)',outline:'none'}} />
+  );
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:8}}>
+      {WEEK.map(({dow,label})=>{
+        const day = config?.[dow];
+        const isOpen = !!day;
+        return (
+          <div key={dow} style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',overflow:'hidden'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px'}}>
+              <span style={{fontSize:14,fontWeight:600,color:'var(--ink)'}}>{label}</span>
+              <button onClick={()=>setDay(dow, isOpen?null:{start:'09:30',end:'19:30',breaks:[]})}
+                style={{fontSize:12,fontWeight:700,padding:'6px 14px',borderRadius:8,border:'none',
+                  background:isOpen?'var(--ink)':'var(--bg3)',color:isOpen?'white':'var(--ink3)'}}>
+                {isOpen?'Aperto':'Chiuso'}
+              </button>
             </div>
-            <div style={{display:'flex',alignItems:'center',gap:10}}>
-              {[['Inizio','start'],['Fine','end']].map(([label,key],i)=>(
-                <React.Fragment key={key}>
-                  {i>0&&<span style={{color:'var(--ink3)',marginTop:14,fontWeight:700}}>–</span>}
-                  <div style={{display:'flex',flexDirection:'column',gap:3}}>
-                    <span style={{fontSize:10,color:'var(--ink3)'}}>{label}</span>
-                    <input type="time" value={br[key]} onChange={e=>updateBreak(i,key,e.target.value)}
-                      style={{background:'var(--bg)',border:'1.5px solid var(--border)',borderRadius:8,padding:'6px 8px',fontSize:13,fontWeight:600,color:'var(--ink)',outline:'none',width:90}} />
+            {isOpen&&(
+              <div style={{padding:'0 14px 14px',borderTop:'1px solid var(--border)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:10,marginTop:12,marginBottom:12}}>
+                  <div><p style={{fontSize:10,color:'var(--ink3)',marginBottom:3}}>Inizio</p>{timeInput(day.start,v=>setDay(dow,{...day,start:v}))}</div>
+                  <span style={{color:'var(--ink3)',fontWeight:700,marginTop:16}}>–</span>
+                  <div><p style={{fontSize:10,color:'var(--ink3)',marginBottom:3}}>Fine</p>{timeInput(day.end,v=>setDay(dow,{...day,end:v}))}</div>
+                </div>
+                {(day.breaks||[]).length>0&&<p style={{fontSize:10,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6}}>Pause fisse</p>}
+                {(day.breaks||[]).map((br,i)=>(
+                  <div key={i} style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+                    {timeInput(br.start,v=>setDay(dow,{...day,breaks:day.breaks.map((b,idx)=>idx===i?{...b,start:v}:b)}))}
+                    <span style={{color:'var(--ink3)'}}>–</span>
+                    {timeInput(br.end,v=>setDay(dow,{...day,breaks:day.breaks.map((b,idx)=>idx===i?{...b,end:v}:b)}))}
+                    <button onClick={()=>setDay(dow,{...day,breaks:day.breaks.filter((_,idx)=>idx!==i)})}
+                      style={{fontSize:11,color:'oklch(45% 0.18 25)',fontWeight:600,padding:'6px 8px',borderRadius:6,
+                        border:'1px solid oklch(90% 0.04 20)',background:'oklch(98% 0.02 20)',flexShrink:0}}>✕</button>
                   </div>
-                </React.Fragment>
-              ))}
-            </div>
+                ))}
+                <button onClick={()=>setDay(dow,{...day,breaks:[...(day.breaks||[]),{start:'12:30',end:'13:30'}]})}
+                  style={{fontSize:11,fontWeight:600,color:'var(--gold)',padding:'5px 10px',borderRadius:7,
+                    border:'1px solid var(--gold-dim)',background:'var(--gold-bg)',marginTop:4}}>
+                  + Pausa fissa
+                </button>
+              </div>
+            )}
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
 
 // ── ADMIN STAFF ──────────────────────────────────────────────────
-function AdminStaff({ bookings, schedules, setSchedules, setToast, staff, setStaff, services, setServices }) {
+function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks, setToast, staff, setStaff, services, setServices }) {
   const [section, setSection]           = useState('staff');
   const [selected, setSelected]         = useState(null);
   const [editingProfile, setEditProfile]= useState(null);
@@ -1428,6 +1426,8 @@ function AdminStaff({ bookings, schedules, setSchedules, setToast, staff, setSta
   const [newDraft, setNewDraft]         = useState({fullName:'',role:'Barber',phone:'',email:'',color:'oklch(65% 0.14 240)'});
   const [editingService, setEditSvc]    = useState(null);
   const [draftService, setDraftService] = useState(null);
+  const [addingBlock, setAddingBlock]   = useState(null);
+  const [blockDraft, setBlockDraft]     = useState({date:'',start:'',end:''});
   const [busy, setBusy]                 = useState(false);
 
   const buildInitials = (fullName) => {
@@ -1459,9 +1459,9 @@ function AdminStaff({ bookings, schedules, setSchedules, setToast, staff, setSta
     const name      = buildShortName(newDraft.fullName);
     const { data, error } = await supabase.from('staff').insert({full_name:newDraft.fullName,name,role:newDraft.role,phone:newDraft.phone,email:newDraft.email,color:newDraft.color,initials}).select().single();
     if (!error&&data) {
-      await supabase.from('staff_schedules').insert({staff_id:data.id,...DEFAULT_SCHEDULE,work_days:DEFAULT_SCHEDULE.days,breaks:JSON.stringify(DEFAULT_SCHEDULE.breaks)});
+      await supabase.from('staff_schedules').insert({staff_id:data.id, weekly_config:DEFAULT_WEEKLY_CONFIG});
       setStaff(prev=>[...prev,data]);
-      setSchedules(prev=>({...prev,[data.id]:{...DEFAULT_SCHEDULE}}));
+      setSchedules(prev=>({...prev,[data.id]:{...DEFAULT_WEEKLY_CONFIG}}));
       setToast('✓ Dipendente aggiunto');
     } else { setToast('Errore: '+(error?.message||'')); }
     setBusy(false);
@@ -1486,13 +1486,32 @@ function AdminStaff({ bookings, schedules, setSchedules, setToast, staff, setSta
     if (!draftSchedule) return;
     setBusy(true);
     const { error } = await supabase.from('staff_schedules').upsert({
-      staff_id:editingSchedule, start_time:draftSchedule.start, end_time:draftSchedule.end,
-      work_days:draftSchedule.days, breaks:JSON.stringify(draftSchedule.breaks), updated_at:new Date().toISOString()
+      staff_id: editingSchedule, weekly_config: draftSchedule, updated_at: new Date().toISOString()
     });
     setBusy(false);
     if (error) { setToast('Errore: '+error.message); return; }
     setSchedules(prev=>({...prev,[editingSchedule]:draftSchedule}));
     setEditSched(null); setDraftSched(null); setToast('✓ Orario salvato');
+  };
+
+  const saveBlock = async () => {
+    if (!blockDraft.date||!blockDraft.start||!blockDraft.end) return;
+    setBusy(true);
+    const { data, error } = await supabase.from('staff_day_blocks').insert({
+      staff_id: addingBlock, date: blockDraft.date,
+      start_time: blockDraft.start, end_time: blockDraft.end,
+    }).select().single();
+    setBusy(false);
+    if (error) { setToast('Errore: '+error.message); return; }
+    setDayBlocks(prev=>({...prev,[addingBlock]:[...(prev[addingBlock]||[]),data]}));
+    setAddingBlock(null); setBlockDraft({date:'',start:'',end:''});
+    setToast('✓ Pausa aggiunta');
+  };
+
+  const deleteBlock = async (staffId, blockId) => {
+    await supabase.from('staff_day_blocks').delete().eq('id', blockId);
+    setDayBlocks(prev=>({...prev,[staffId]:(prev[staffId]||[]).filter(b=>b.id!==blockId)}));
+    setToast('Pausa rimossa');
   };
 
   const saveService = async () => {
@@ -1606,19 +1625,75 @@ function AdminStaff({ bookings, schedules, setSchedules, setToast, staff, setSta
     );
   }
 
+  if (addingBlock!==null) {
+    const s=staff.find(st=>st.id===addingBlock);
+    return (
+      <div className="screen">
+        <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
+          <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+            <button className="btn-icon" onClick={()=>setAddingBlock(null)}>←</button>
+            <h2 style={{fontSize:20,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>Aggiungi pausa — {s?.name}</h2>
+          </div>
+        </div>
+        <div className="scroll-content" style={{padding:'20px 24px 100px'}}>
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div className="input-group"><label className="input-label">Data</label>
+              <input type="date" className="input-field" value={blockDraft.date} min={new Date().toISOString().split('T')[0]}
+                onChange={e=>setBlockDraft(p=>({...p,date:e.target.value}))} /></div>
+            <div style={{display:'flex',gap:12}}>
+              <div className="input-group" style={{flex:1}}><label className="input-label">Dalle</label>
+                <input type="time" className="input-field" value={blockDraft.start} onChange={e=>setBlockDraft(p=>({...p,start:e.target.value}))} /></div>
+              <div className="input-group" style={{flex:1}}><label className="input-label">Alle</label>
+                <input type="time" className="input-field" value={blockDraft.end} onChange={e=>setBlockDraft(p=>({...p,end:e.target.value}))} /></div>
+            </div>
+          </div>
+        </div>
+        <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'12px 24px 28px',background:'var(--bg)',borderTop:'1px solid var(--border)'}}>
+          <button className="btn-primary" onClick={saveBlock} disabled={!blockDraft.date||!blockDraft.start||!blockDraft.end||busy}
+            style={{opacity:blockDraft.date&&blockDraft.start&&blockDraft.end&&!busy?1:0.4}}>
+            {busy?'Salvataggio...':'Salva pausa'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (editingSchedule!==null&&draftSchedule) {
     const s=staff.find(st=>st.id===editingSchedule);
+    const blocks=(dayBlocks[editingSchedule]||[]).filter(b=>b.date>=new Date().toISOString().split('T')[0]);
     return(
       <div className="screen">
         <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
           <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-            <button className="btn-icon" onClick={()=>setEditSched(null)}>←</button>
+            <button className="btn-icon" onClick={()=>{setEditSched(null);setDraftSched(null);}}>←</button>
             <div><p style={{fontSize:11,color:'var(--ink3)'}}>Orario di</p>
               <h2 style={{fontSize:20,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>{s?.name}</h2></div>
           </div>
         </div>
         <div className="scroll-content" style={{padding:'12px 24px 100px'}}>
-          <ScheduleEditor schedule={draftSchedule} onChange={setDraftSched} />
+          <WeeklyConfigEditor config={draftSchedule} onChange={setDraftSched} />
+          <div style={{marginTop:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+              <p style={{fontSize:12,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5}}>Pause extra su data</p>
+              <button onClick={()=>setAddingBlock(editingSchedule)}
+                style={{fontSize:12,fontWeight:600,color:'var(--gold)',padding:'5px 10px',borderRadius:7,border:'1px solid var(--gold-dim)',background:'var(--gold-bg)'}}>
+                + Aggiungi
+              </button>
+            </div>
+            {blocks.length===0&&<p style={{fontSize:12,color:'var(--ink3)',fontStyle:'italic'}}>Nessuna pausa extra programmata</p>}
+            {blocks.map(b=>(
+              <div key={b.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',background:'var(--bg2)',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',marginBottom:8}}>
+                <div>
+                  <p style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{new Date(b.date+'T12:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'long'})}</p>
+                  <p style={{fontSize:12,color:'var(--ink3)'}}>{b.start_time.slice(0,5)} – {b.end_time.slice(0,5)}</p>
+                </div>
+                <button onClick={()=>deleteBlock(editingSchedule,b.id)}
+                  style={{fontSize:11,color:'oklch(45% 0.18 25)',fontWeight:600,padding:'5px 10px',borderRadius:6,border:'1px solid oklch(90% 0.04 20)',background:'oklch(98% 0.02 20)'}}>
+                  Rimuovi
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
         <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'12px 24px 28px',background:'var(--bg)',borderTop:'1px solid var(--border)'}}>
           <button className="btn-primary" style={{opacity:busy?0.6:1}} disabled={busy} onClick={saveSchedule}>{busy?'Salvataggio...':'Salva orario'}</button>
@@ -1683,7 +1758,7 @@ function AdminStaff({ bookings, schedules, setSchedules, setToast, staff, setSta
             <button className="btn-secondary" style={{marginBottom:16}} onClick={()=>setAddingStaff(true)}>+ Aggiungi dipendente</button>
             {staff.map(s=>{
               const sBks=bookings.filter(b=>b.staff_id===s.id&&b.status!=='cancelled');
-              const sch=schedules[s.id]||DEFAULT_SCHEDULE;
+              const sch=schedules[s.id]||DEFAULT_WEEKLY_CONFIG;
               const isOpen=selected===s.id;
               return(
                 <div key={s.id} className="card" style={{marginBottom:12}}>
@@ -1701,25 +1776,19 @@ function AdminStaff({ bookings, schedules, setSchedules, setToast, staff, setSta
                   </button>
                   {isOpen&&(
                     <div style={{marginTop:16,paddingTop:16,borderTop:'1px solid var(--border)'}}>
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-                        <div>
-                          <p style={{fontSize:11,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5,marginBottom:4}}>Orario</p>
-                          <p style={{fontSize:14,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>{sch.start} – {sch.end}</p>
-                          <p style={{fontSize:11,color:'var(--ink3)',marginTop:2}}>{sch.days?.filter(Boolean).length||0} giorni</p>
-                        </div>
-                        <div style={{display:'flex',gap:8}}>
-                          <button onClick={()=>{setEditProfile(s.id);setDraftProfile({...s});}}
-                            style={{padding:'8px 12px',borderRadius:10,background:'var(--bg2)',color:'var(--ink)',fontSize:12,fontWeight:700,border:'1px solid var(--border)'}}>Profilo</button>
-                          <button onClick={()=>{setEditSched(s.id);setDraftSched({...sch,days:[...(sch.days||DEFAULT_SCHEDULE.days)],breaks:[...(sch.breaks||[])]});}}
-                            style={{padding:'8px 12px',borderRadius:10,background:'var(--ink)',color:'white',fontSize:12,fontWeight:700,border:'none'}}>Orario</button>
-                        </div>
+                      <div style={{display:'flex',gap:4,marginBottom:12}}>
+                        {[{dow:1,l:'Lun'},{dow:2,l:'Mar'},{dow:3,l:'Mer'},{dow:4,l:'Gio'},{dow:5,l:'Ven'},{dow:6,l:'Sab'},{dow:0,l:'Dom'}].map(({dow,l})=>{
+                          const open=!!(sch&&sch[dow]);
+                          return <div key={dow} style={{flex:1,textAlign:'center',padding:'6px 2px',borderRadius:8,background:open?'var(--ink)':'var(--bg3)',border:'1px solid var(--border)'}}>
+                            <p style={{fontSize:9,fontWeight:700,color:open?'white':'var(--ink3)'}}>{l}</p>
+                          </div>;
+                        })}
                       </div>
-                      <div style={{display:'flex',gap:4}}>
-                        {DAYS_ABBR.map((d,i)=>(
-                          <div key={i} style={{flex:1,textAlign:'center',padding:'6px 2px',borderRadius:8,background:(sch.days||[])[i]?'var(--ink)':'var(--bg3)',border:'1px solid var(--border)'}}>
-                            <p style={{fontSize:9,fontWeight:700,color:(sch.days||[])[i]?'white':'var(--ink3)'}}>{d}</p>
-                          </div>
-                        ))}
+                      <div style={{display:'flex',gap:8}}>
+                        <button onClick={()=>{setEditProfile(s.id);setDraftProfile({...s});}}
+                          style={{flex:1,padding:'8px 12px',borderRadius:10,background:'var(--bg2)',color:'var(--ink)',fontSize:12,fontWeight:700,border:'1px solid var(--border)'}}>Profilo</button>
+                        <button onClick={()=>{setEditSched(s.id);setDraftSched(sch?{...sch}:{...DEFAULT_WEEKLY_CONFIG});}}
+                          style={{flex:1,padding:'8px 12px',borderRadius:10,background:'var(--ink)',color:'white',fontSize:12,fontWeight:700,border:'none'}}>Orario</button>
                       </div>
                     </div>
                   )}
@@ -1838,6 +1907,7 @@ function App() {
   const [services, setServices]   = useState([]);
   const [bookings, setBookings]   = useState([]);
   const [schedules, setSchedules] = useState({});
+  const [dayBlocks, setDayBlocks] = useState({});
   const [toast, setToast]         = useState(null);
 
   // Controlla sessione all'avvio
@@ -1873,29 +1943,34 @@ function App() {
 
   const loadAppData = async () => {
     setDataLoad(true);
-    const [staffRes, svcRes, bkRes, schRes] = await Promise.all([
+    const today = new Date().toISOString().split('T')[0];
+    const [staffRes, svcRes, bkRes, schRes, blkRes] = await Promise.all([
       supabase.from('staff').select('*').eq('active', true).order('id'),
       supabase.from('services').select('*').eq('active', true).order('id'),
       profile?.is_admin
         ? supabase.from('bookings').select('*, profiles(name, phone)').order('date', {ascending:false}).order('time', {ascending:true})
         : supabase.from('bookings').select('*, staff(name, color, initials)').eq('user_id', profile?.id).order('date', {ascending:false}),
       supabase.from('staff_schedules').select('*'),
+      supabase.from('staff_day_blocks').select('*').gte('date', today).order('date'),
     ]);
 
-    if (staffRes.data)   setStaff(staffRes.data);
-    if (svcRes.data)     setServices(svcRes.data);
-    if (bkRes.data)      setBookings(bkRes.data);
+    if (staffRes.data) setStaff(staffRes.data);
+    if (svcRes.data)   setServices(svcRes.data);
+    if (bkRes.data)    setBookings(bkRes.data);
     if (schRes.data) {
       const schMap = {};
       schRes.data.forEach(s => {
-        schMap[s.staff_id] = {
-          start: s.start_time?.slice(0,5)||'08:00',
-          end:   s.end_time?.slice(0,5)||'20:00',
-          days:  s.work_days||DEFAULT_SCHEDULE.days,
-          breaks:typeof s.breaks==='string'?JSON.parse(s.breaks):s.breaks||[],
-        };
+        schMap[s.staff_id] = s.weekly_config || {...DEFAULT_WEEKLY_CONFIG};
       });
       setSchedules(schMap);
+    }
+    if (blkRes.data) {
+      const blkMap = {};
+      blkRes.data.forEach(b => {
+        if (!blkMap[b.staff_id]) blkMap[b.staff_id] = [];
+        blkMap[b.staff_id].push(b);
+      });
+      setDayBlocks(blkMap);
     }
     setDataLoad(false);
   };
@@ -1915,14 +1990,14 @@ function App() {
   const isAdmin = profile.is_admin;
 
   const screens = isAdmin ? {
-    'admin-dash':    <AdminDash    bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} services={services} />,
-    'admin-cal':     <AdminCalendar bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} />,
-    'admin-staff':   <AdminStaff   bookings={bookings} schedules={schedules} setSchedules={setSchedules} setToast={setToast} staff={staff} setStaff={setStaff} services={services} setServices={setServices} />,
+    'admin-dash':    <AdminDash    bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} services={services} schedules={schedules} dayBlocks={dayBlocks} />,
+    'admin-cal':     <AdminCalendar bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} schedules={schedules} dayBlocks={dayBlocks} />,
+    'admin-staff':   <AdminStaff   bookings={bookings} schedules={schedules} setSchedules={setSchedules} dayBlocks={dayBlocks} setDayBlocks={setDayBlocks} setToast={setToast} staff={staff} setStaff={setStaff} services={services} setServices={setServices} />,
     'admin-history': <AdminHistory bookings={bookings} staff={staff} />,
     'admin-account': <AdminAccount profile={profile} onLogout={handleLogout} />,
   } : {
     'home':     <UserHome     user={authUser} profile={profile} bookings={bookings} setTab={setTab} staff={staff} services={services} />,
-    'booking':  <BookingFlow  profile={profile} bookings={bookings} onBooked={loadAppData} setToast={setToast} staff={staff} services={services} setTab={setTab} />,
+    'booking':  <BookingFlow  profile={profile} bookings={bookings} onBooked={loadAppData} setToast={setToast} staff={staff} services={services} setTab={setTab} schedules={schedules} dayBlocks={dayBlocks} />,
     'calendar': <UserCalendar profile={profile} bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} />,
     'profile':  <UserProfile  profile={profile} bookings={bookings} onLogout={handleLogout} />,
   };
