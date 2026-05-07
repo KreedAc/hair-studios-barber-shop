@@ -108,7 +108,12 @@ $$;
 
 -- PROFILES
 CREATE POLICY "profiles: leggi il proprio"    ON public.profiles FOR SELECT USING (auth.uid() = id OR public.is_admin());
-CREATE POLICY "profiles: modifica il proprio" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "profiles: modifica il proprio" ON public.profiles
+  FOR UPDATE USING (auth.uid() = id)
+  WITH CHECK (
+    auth.uid() = id
+    AND is_admin = (SELECT is_admin FROM public.profiles WHERE id = auth.uid())
+  );
 CREATE POLICY "profiles: admin tutto"         ON public.profiles FOR ALL    USING (public.is_admin());
 
 -- STAFF (tutti possono leggere, solo admin scrivono)
@@ -124,7 +129,7 @@ CREATE POLICY "bookings: leggi le proprie o admin" ON public.bookings
   FOR SELECT USING (auth.uid() = user_id OR public.is_admin());
 
 CREATE POLICY "bookings: inserisci le proprie" ON public.bookings
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK (auth.uid() = user_id AND status = 'pending');
 
 CREATE POLICY "bookings: cancella le proprie pending" ON public.bookings
   FOR UPDATE USING (auth.uid() = user_id AND status = 'pending')
