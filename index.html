@@ -1241,7 +1241,6 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services }) {
                   <p style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{b.client_name}</p>
                   <p style={{fontSize:11,color:'var(--ink3)'}}>{b.service_name} · {s?.name}</p>
                 </div>
-                <button onClick={()=>setActiveBooking(b)} style={{width:32,height:32,borderRadius:8,background:'var(--bg2)',border:'1px solid var(--border)',fontSize:16,color:'var(--ink2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>···</button>
               </div>
             );
           })
