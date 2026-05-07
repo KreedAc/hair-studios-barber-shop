@@ -1949,7 +1949,7 @@ function App() {
       supabase.from('services').select('*').eq('active', true).order('id'),
       profile?.is_admin
         ? supabase.from('bookings').select('*, profiles(name, phone)').order('date', {ascending:false}).order('time', {ascending:true})
-        : supabase.from('bookings').select('*, staff(name, color, initials)').eq('user_id', profile?.id).order('date', {ascending:false}),
+        : supabase.from('bookings').select('*, staff(name, color, initials)').order('date', {ascending:false}).order('time', {ascending:true}),
       supabase.from('staff_schedules').select('*'),
       supabase.from('staff_day_blocks').select('*').gte('date', today).order('date'),
     ]);
