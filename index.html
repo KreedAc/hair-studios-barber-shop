@@ -944,13 +944,218 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff }) {
   );
 }
 
+// ── ADMIN MANUAL BOOKING ────────────────────────────────────────
+function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onClose }) {
+  const [step, setStep]           = useState(0);
+  const [clientName, setClientName] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [selectedServices, setSel] = useState([]);
+  const [selectedStaff, setSelectedStaff] = useState(null);
+  const [date, setDate]           = useState(null);
+  const [time, setTime]           = useState(null);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedDay, setSelectedDay] = useState(0);
+  const [busy, setBusy]           = useState(false);
+  const weekDates = getWeekDates(weekOffset);
+  const totalDuration = selectedServices.reduce((a,s)=>a+s.duration, 0);
+
+  const toggleService = (s) => {
+    setSel(prev => prev.find(p=>p.id===s.id) ? prev.filter(p=>p.id!==s.id) : [...prev,s]);
+    setTime(null); setDate(null);
+  };
+
+  const SLOTS = [];
+  for(let h=8;h<20;h++){ SLOTS.push(`${String(h).padStart(2,'0')}:00`); SLOTS.push(`${String(h).padStart(2,'0')}:30`); }
+
+  const isSlotAvailable = (d, t, sId) => {
+    const [h,m] = t.split(':').map(Number);
+    const start = h*60+m, end = start+totalDuration;
+    return !bookings.some(b => {
+      if (b.staff_id!==sId||b.date!==d||b.status==='cancelled') return false;
+      const [bh,bm] = (b.time||'').slice(0,5).split(':').map(Number);
+      const bs=bh*60+bm, be=bs+b.service_duration;
+      return start<be && end>bs;
+    });
+  };
+
+  const confirm = async () => {
+    if (!clientName.trim()||!selectedStaff||!date||!time||!selectedServices.length) return;
+    setBusy(true);
+    const { error } = await supabase.from('bookings').insert({
+      user_id:          null,
+      staff_id:         selectedStaff.id,
+      service_id:       selectedServices.length===1 ? selectedServices[0].id : null,
+      service_name:     selectedServices.map(s=>s.name).join(' + '),
+      service_duration: totalDuration,
+      client_name:      clientName.trim(),
+      notes:            clientPhone.trim()||null,
+      date, time,
+      status: 'confirmed',
+    });
+    setBusy(false);
+    if (error) { setToast('Errore: '+error.message); return; }
+    setToast('✓ Appuntamento inserito');
+    onBooked();
+    onClose();
+  };
+
+  const steps = ['Cliente','Servizi','Barbiere','Data & Ora'];
+  return (
+    <div className="screen">
+      <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
+          <button className="btn-icon" onClick={step===0?onClose:()=>setStep(s=>s-1)}>←</button>
+          <div style={{flex:1}}>
+            <h2 style={{fontSize:20,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>{steps[step]}</h2>
+          </div>
+        </div>
+        <div className="step-indicator" style={{marginBottom:16}}>
+          {steps.map((_,i)=><div key={i} className={`step-dot ${i===step?'active':i<step?'done':''}`}></div>)}
+        </div>
+      </div>
+
+      <div className="scroll-content" style={{padding:'0 24px 100px'}}>
+
+        {/* STEP 0: Cliente */}
+        {step===0&&(
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div className="input-group">
+              <label className="input-label">Nome cliente *</label>
+              <input className="input-field" placeholder="Mario Rossi" value={clientName} onChange={e=>setClientName(e.target.value)} />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Telefono <span style={{color:'var(--ink3)',fontWeight:400}}>(opzionale)</span></label>
+              <input className="input-field" type="tel" placeholder="+39 345 000 0000" value={clientPhone} onChange={e=>setClientPhone(e.target.value)} />
+            </div>
+            <button className="btn-primary" style={{marginTop:8,opacity:clientName.trim()?1:0.4}} disabled={!clientName.trim()} onClick={()=>setStep(1)}>Continua →</button>
+          </div>
+        )}
+
+        {/* STEP 1: Servizi */}
+        {step===1&&(
+          <>
+            <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
+              {services.map(s=>{
+                const isSel=selectedServices.find(p=>p.id===s.id);
+                return(
+                  <button key={s.id} onClick={()=>toggleService(s)}
+                    style={{display:'flex',alignItems:'center',gap:14,padding:'16px 18px',
+                      background:isSel?'var(--ink)':'var(--bg)',borderRadius:'var(--radius-sm)',
+                      border:'1.5px solid',borderColor:isSel?'var(--ink)':'var(--border)',textAlign:'left',width:'100%'}}>
+                    <div style={{width:22,height:22,borderRadius:6,border:'2px solid',
+                      borderColor:isSel?'var(--gold)':'rgba(0,0,0,0.2)',background:isSel?'var(--gold)':'transparent',
+                      display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                      {isSel&&<span style={{color:'white',fontSize:13,fontWeight:700}}>✓</span>}
+                    </div>
+                    <div style={{flex:1}}>
+                      <p style={{fontSize:15,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",color:isSel?'white':'var(--ink)'}}>{s.name}</p>
+                      <p style={{fontSize:12,color:isSel?'rgba(255,255,255,0.55)':'var(--ink3)',marginTop:2}}>{s.duration} min{s.price?` · €${Number(s.price).toFixed(2)}`:''}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <button className="btn-primary" style={{opacity:selectedServices.length?1:0.4}} disabled={!selectedServices.length} onClick={()=>setStep(2)}>Continua →</button>
+          </>
+        )}
+
+        {/* STEP 2: Barbiere */}
+        {step===2&&(
+          <>
+            <div style={{display:'flex',flexDirection:'column',gap:12,marginBottom:24}}>
+              {staff.map(s=>(
+                <button key={s.id} onClick={()=>{setSelectedStaff(s);setTime(null);setDate(null);}}
+                  style={{display:'flex',alignItems:'center',gap:16,padding:'18px',borderRadius:'var(--radius)',
+                    background:selectedStaff?.id===s.id?'var(--ink)':'var(--bg)',
+                    border:'1.5px solid',borderColor:selectedStaff?.id===s.id?'var(--ink)':'var(--border)',
+                    textAlign:'left',width:'100%'}}>
+                  <div className="avatar" style={{width:52,height:52,fontSize:18,background:s.color,color:'white',fontWeight:700}}>{s.initials}</div>
+                  <div style={{flex:1}}>
+                    <p style={{fontSize:16,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:selectedStaff?.id===s.id?'white':'var(--ink)'}}>{s.name}</p>
+                    <p style={{fontSize:12,color:selectedStaff?.id===s.id?'rgba(255,255,255,0.6)':'var(--ink3)',marginTop:2}}>{s.role}</p>
+                  </div>
+                  {selectedStaff?.id===s.id&&<span style={{color:'var(--gold)',fontSize:20}}>✓</span>}
+                </button>
+              ))}
+            </div>
+            <button className="btn-primary" style={{opacity:selectedStaff?1:0.4}} disabled={!selectedStaff} onClick={()=>setStep(3)}>Continua →</button>
+          </>
+        )}
+
+        {/* STEP 3: Data & Ora */}
+        {step===3&&selectedStaff&&(
+          <>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+              <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>←</button>
+              <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{MONTHS[weekDates[0].getMonth()]} {weekDates[0].getFullYear()}</span>
+              <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>→</button>
+            </div>
+            <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingBottom:4}}>
+              {weekDates.map((d,i)=>{
+                const today=new Date(); today.setHours(0,0,0,0);
+                const isPast=d<today;
+                const isSel=selectedDay===i&&!isPast;
+                const isToday=d.toDateString()===new Date().toDateString();
+                return(
+                  <button key={i} disabled={isPast} onClick={()=>{if(!isPast){setSelectedDay(i);setTime(null);setDate(null);}}}
+                    style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,padding:'10px 12px',
+                      borderRadius:12,border:'1.5px solid',flexShrink:0,minWidth:46,
+                      borderColor:isSel?'var(--ink)':isToday?'var(--gold-dim)':'var(--border)',
+                      background:isSel?'var(--ink)':isToday?'var(--gold-bg)':'var(--bg)',
+                      opacity:isPast?0.3:1,cursor:isPast?'not-allowed':'pointer'}}>
+                    <span style={{fontSize:10,fontWeight:600,color:isSel?'rgba(255,255,255,0.6)':isToday?'var(--gold)':'var(--ink3)',textTransform:'uppercase',letterSpacing:0.3}}>{DAYS_SHORT[i]}</span>
+                    <span style={{fontSize:18,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:isSel?'white':'var(--ink)'}}>{d.getDate()}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p style={{fontSize:12,fontWeight:600,color:'var(--ink2)',marginBottom:10,textTransform:'uppercase',letterSpacing:0.5}}>Orari disponibili</p>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:24}}>
+              {SLOTS.map(h=>{
+                const dStr=weekDates[selectedDay].toISOString().split('T')[0];
+                const [hh,mm]=h.split(':').map(Number);
+                const withinHours=(hh*60+mm+totalDuration)<=20*60;
+                const avail=withinHours&&isSlotAvailable(dStr,h,selectedStaff.id);
+                const isSel=time===h&&date===dStr;
+                return(
+                  <button key={h} disabled={!avail} onClick={()=>{setTime(h);setDate(dStr);}}
+                    style={{padding:'12px 8px',borderRadius:10,border:'1.5px solid',textAlign:'center',
+                      fontSize:13,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",
+                      background:isSel?'var(--ink)':!avail?'var(--bg2)':'var(--bg)',
+                      color:isSel?'white':!avail?'var(--ink3)':'var(--ink)',
+                      borderColor:isSel?'var(--ink)':'var(--border)',
+                      opacity:!avail?0.4:1,cursor:!avail?'not-allowed':'pointer'}}>
+                    {h}
+                  </button>
+                );
+              })}
+            </div>
+            <button className="btn-primary" style={{opacity:date&&time&&!busy?1:0.4}} disabled={!date||!time||busy} onClick={confirm}>
+              {busy?'Salvataggio...':'✓ Inserisci appuntamento'}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── ADMIN DASHBOARD ─────────────────────────────────────────────
-function AdminDash({ bookings, onRefresh, setToast, staff }) {
+function AdminDash({ bookings, onRefresh, setToast, staff, services }) {
   const today = TODAY();
   const todayBks   = bookings.filter(b=>b.date===today&&b.status!=='cancelled');
   const pending    = bookings.filter(b=>b.status==='pending');
   const confirmed  = bookings.filter(b=>b.status==='confirmed').length;
   const [activeBooking, setActiveBooking] = useState(null);
+  const [manualBooking, setManualBooking] = useState(false);
+
+  if (manualBooking) return (
+    <AdminManualBooking
+      staff={staff} services={services} bookings={bookings}
+      onBooked={onRefresh} setToast={setToast}
+      onClose={()=>setManualBooking(false)}
+    />
+  );
 
   const accept = async (id) => {
     await supabase.from('bookings').update({status:'confirmed'}).eq('id',id);
@@ -969,6 +1174,11 @@ function AdminDash({ bookings, onRefresh, setToast, staff }) {
             <p style={{fontSize:12,color:'var(--ink3)',fontWeight:500}}>Dashboard</p>
             <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>Gestione Salone</h2>
           </div>
+          <button onClick={()=>setManualBooking(true)}
+            style={{display:'flex',alignItems:'center',gap:6,padding:'10px 16px',borderRadius:'var(--radius-sm)',
+              background:'var(--ink)',color:'white',fontSize:13,fontWeight:700,border:'none',flexShrink:0,marginTop:4}}>
+            <span style={{fontSize:16,lineHeight:1}}>+</span> Nuovo
+          </button>
         </div>
 
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:24}}>
@@ -1706,7 +1916,7 @@ function App() {
   const isAdmin = profile.is_admin;
 
   const screens = isAdmin ? {
-    'admin-dash':    <AdminDash    bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} />,
+    'admin-dash':    <AdminDash    bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} services={services} />,
     'admin-cal':     <AdminCalendar bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} />,
     'admin-staff':   <AdminStaff   bookings={bookings} schedules={schedules} setSchedules={setSchedules} setToast={setToast} staff={staff} setStaff={setStaff} services={services} setServices={setServices} />,
     'admin-history': <AdminHistory bookings={bookings} staff={staff} />,
