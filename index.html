@@ -224,7 +224,13 @@ const getWeekDates = (offset = 0) => {
   });
 };
 
-const TODAY = () => new Date().toISOString().split('T')[0];
+const toLocalDate = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const g = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${g}`;
+};
+const TODAY = () => toLocalDate(new Date());
 
 const mapBooking = (b) => ({
   ...b,
@@ -605,7 +611,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
             <p style={{fontSize:12,fontWeight:600,color:'var(--ink2)',marginBottom:10,textTransform:'uppercase',letterSpacing:0.5}}>Orari disponibili</p>
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:24}}>
               {ALL_SLOTS.map(h => {
-                const dStr=weekDates[selectedDay].toISOString().split('T')[0];
+                const dStr=toLocalDate(weekDates[selectedDay]);
                 const now=new Date();
                 const isToday=weekDates[selectedDay].toDateString()===now.toDateString();
                 const [hh,mm]=h.split(':').map(Number);
@@ -675,7 +681,7 @@ function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
 
   const myBookings = bookings.filter(b => b.user_id===profile.id);
   const dayBookings = selectedDay!==null
-    ? myBookings.filter(b=>b.date===weekDates[selectedDay].toISOString().split('T')[0])
+    ? myBookings.filter(b=>b.date===toLocalDate(weekDates[selectedDay]))
     : myBookings;
 
   const cancel = async (id) => {
@@ -701,7 +707,7 @@ function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
             Tutti
           </button>
           {weekDates.map((d,i)=>{
-            const hasB=myBookings.some(b=>b.date===d.toISOString().split('T')[0]&&b.status!=='cancelled');
+            const hasB=myBookings.some(b=>b.date===toLocalDate(d)&&b.status!=='cancelled');
             return(
               <button key={i} onClick={()=>setSelectedDay(selectedDay===i?null:i)}
                 style={{padding:'6px 14px',borderRadius:99,fontSize:12,fontWeight:600,border:'1.5px solid',flexShrink:0,position:'relative',
@@ -833,7 +839,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
   const weekDates = getWeekDates(weekOffset);
 
   const confirmReschedule = async () => {
-    const dateStr=weekDates[selectedDay].toISOString().split('T')[0];
+    const dateStr=toLocalDate(weekDates[selectedDay]);
     if (!newTime) return;
     setBusy(true);
     const { error } = await supabase.from('bookings').update({ date:dateStr, time:newTime, staff_id:newStaff, status:'confirmed' }).eq('id',booking.id);
@@ -932,7 +938,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
             </div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,overflowY:'auto',flex:1,paddingBottom:4}}>
               {HOURS.map(h=>{
-                const dStr=weekDates[selectedDay].toISOString().split('T')[0];
+                const dStr=toLocalDate(weekDates[selectedDay]);
                 const now=new Date();
                 const isToday=weekDates[selectedDay].toDateString()===now.toDateString();
                 const [hh,mm]=h.split(':').map(Number);
@@ -1119,7 +1125,7 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
             <p style={{fontSize:12,fontWeight:600,color:'var(--ink2)',marginBottom:10,textTransform:'uppercase',letterSpacing:0.5}}>Orari disponibili</p>
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:24}}>
               {SLOTS.map(h=>{
-                const dStr=weekDates[selectedDay].toISOString().split('T')[0];
+                const dStr=toLocalDate(weekDates[selectedDay]);
                 const avail=checkSlot(dStr,h,selectedStaff.id,totalDuration,bookings,schedules,dayBlocks);
                 const isSel=time===h&&date===dStr;
                 return(
@@ -1269,7 +1275,7 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, schedules, dayBlo
   const [activeBooking, setActiveBooking] = useState(null);
   const weekDates = getWeekDates(weekOffset);
 
-  const dateStr = weekDates[selectedDay].toISOString().split('T')[0];
+  const dateStr = toLocalDate(weekDates[selectedDay]);
   const dayBks  = bookings.filter(b=>b.date===dateStr&&b.status!=='cancelled');
   const DISPLAY_HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
   const CAL_START = 8;
@@ -1290,7 +1296,7 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, schedules, dayBlo
         </div>
         <div style={{display:'flex',gap:4,marginBottom:12}}>
           {weekDates.slice(0,6).map((d,i)=>{
-            const hasBks=bookings.some(b=>b.date===d.toISOString().split('T')[0]&&b.status!=='cancelled');
+            const hasBks=bookings.some(b=>b.date===toLocalDate(d)&&b.status!=='cancelled');
             const isToday=d.toDateString()===new Date().toDateString();
             return(
               <button key={i} onClick={()=>setSelectedDay(i)}
@@ -1638,7 +1644,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
         <div className="scroll-content" style={{padding:'20px 24px 100px'}}>
           <div style={{display:'flex',flexDirection:'column',gap:16}}>
             <div className="input-group"><label className="input-label">Data</label>
-              <input type="date" className="input-field" value={blockDraft.date} min={new Date().toISOString().split('T')[0]}
+              <input type="date" className="input-field" value={blockDraft.date} min={toLocalDate(new Date())}
                 onChange={e=>setBlockDraft(p=>({...p,date:e.target.value}))} /></div>
             <div style={{display:'flex',gap:12}}>
               <div className="input-group" style={{flex:1}}><label className="input-label">Dalle</label>
@@ -1660,7 +1666,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
 
   if (editingSchedule!==null&&draftSchedule) {
     const s=staff.find(st=>st.id===editingSchedule);
-    const blocks=(dayBlocks[editingSchedule]||[]).filter(b=>b.date>=new Date().toISOString().split('T')[0]);
+    const blocks=(dayBlocks[editingSchedule]||[]).filter(b=>b.date>=toLocalDate(new Date()));
     return(
       <div className="screen">
         <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
@@ -1943,7 +1949,7 @@ function App() {
 
   const loadAppData = async () => {
     setDataLoad(true);
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalDate(new Date());
     const [staffRes, svcRes, bkRes, schRes, blkRes] = await Promise.all([
       supabase.from('staff').select('*').eq('active', true).order('id'),
       supabase.from('services').select('*').eq('active', true).order('id'),
