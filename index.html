@@ -682,11 +682,10 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
                   <button key={h} disabled={!avail} onClick={()=>{setTime(h);setDate(dStr);}}
                     style={{padding:'12px 8px',borderRadius:10,border:'1.5px solid',textAlign:'center',
                       fontSize:13,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",
-                      background:isSel?'var(--ink)':!avail?'var(--bg2)':'var(--bg)',
-                      color:isSel?'white':!avail?'var(--ink3)':'var(--ink)',
-                      borderColor:isSel?'var(--ink)':'var(--border)',
-                      opacity:!avail?0.4:1,cursor:!avail?'not-allowed':'pointer',
-                      textDecoration:!avail?'line-through':'none',transition:'all 0.15s'}}>
+                      background:isSel?'var(--ink)':avail?'oklch(93% 0.07 145)':'oklch(94% 0.04 15)',
+                      color:isSel?'white':avail?'oklch(32% 0.14 145)':'oklch(45% 0.1 15)',
+                      borderColor:isSel?'var(--ink)':avail?'oklch(76% 0.11 145)':'oklch(82% 0.07 15)',
+                      cursor:!avail?'not-allowed':'pointer',transition:'all 0.15s'}}>
                     {h}
                   </button>
                 );
@@ -1023,8 +1022,10 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
                 return(
                   <button key={h} disabled={disabled} onClick={()=>!disabled&&setNewTime(h)}
                     style={{padding:'10px 4px',borderRadius:8,border:'1.5px solid',textAlign:'center',fontSize:12,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",
-                      background:sel?'var(--ink)':disabled?'var(--bg3)':'var(--bg2)',color:sel?'white':disabled?'var(--ink3)':'var(--ink)',
-                      borderColor:sel?'var(--ink)':'var(--border)',opacity:disabled?0.4:1,cursor:disabled?'not-allowed':'pointer'}}>
+                      background:sel?'var(--ink)':!disabled?'oklch(93% 0.07 145)':'oklch(94% 0.04 15)',
+                      color:sel?'white':!disabled?'oklch(32% 0.14 145)':'oklch(45% 0.1 15)',
+                      borderColor:sel?'var(--ink)':!disabled?'oklch(76% 0.11 145)':'oklch(82% 0.07 15)',
+                      cursor:disabled?'not-allowed':'pointer'}}>
                     {h}
                   </button>
                 );
@@ -1213,10 +1214,10 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
                   <button key={h} disabled={!avail} onClick={()=>{setTime(h);setDate(dStr);}}
                     style={{padding:'12px 8px',borderRadius:10,border:'1.5px solid',textAlign:'center',
                       fontSize:13,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",
-                      background:isSel?'var(--ink)':!avail?'var(--bg2)':'var(--bg)',
-                      color:isSel?'white':!avail?'var(--ink3)':'var(--ink)',
-                      borderColor:isSel?'var(--ink)':'var(--border)',
-                      opacity:!avail?0.4:1,cursor:!avail?'not-allowed':'pointer'}}>
+                      background:isSel?'var(--ink)':avail?'oklch(93% 0.07 145)':'oklch(94% 0.04 15)',
+                      color:isSel?'white':avail?'oklch(32% 0.14 145)':'oklch(45% 0.1 15)',
+                      borderColor:isSel?'var(--ink)':avail?'oklch(76% 0.11 145)':'oklch(82% 0.07 15)',
+                      cursor:!avail?'not-allowed':'pointer',transition:'all 0.15s'}}>
                     {h}
                   </button>
                 );
@@ -1413,7 +1414,7 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, schedules, dayBlo
         <div style={{position:'relative',marginTop:8}}>
           {DISPLAY_HOURS.map(h=>(
             <div key={h} style={{display:'grid',gridTemplateColumns:'48px 1fr 1fr',height:72,position:'relative'}}>
-              <div style={{paddingRight:8,textAlign:'right'}}><span style={{fontSize:10,color:'var(--ink3)',fontWeight:500}}>{h}</span></div>
+              <div style={{paddingRight:8,textAlign:'right'}}><span style={{fontSize:13,color:'var(--ink2)',fontWeight:600,fontFamily:"'Cormorant Garamond',serif"}}>{h}</span></div>
               <div style={{borderTop:'1px solid var(--border)'}}></div>
               <div style={{borderTop:'1px solid var(--border)',borderLeft:'1px solid var(--border)'}}></div>
             </div>
