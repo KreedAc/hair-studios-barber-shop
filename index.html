@@ -187,18 +187,23 @@ const DEFAULT_WEEKLY_CONFIG = {
 
 // Verifica se uno slot è disponibile rispettando orario settimanale, pause fisse e blocchi extra
 function checkSlot(date, time, staffId, duration, bookings, schedules, dayBlocks) {
+  if (!date || !time || !staffId || !duration) return false;
   const dow = new Date(date + 'T12:00:00').getDay();
   const cfg = (schedules[staffId]||{})[dow];
   if (!cfg) return false;
-  const t2m = t => { const [h,m]=t.split(':').map(Number); return h*60+m; };
+  const t2m = t => { if (!t) return NaN; const [h,m]=(t+'').split(':').map(Number); return h*60+m; };
   const ss = t2m(time), se = ss + duration;
+  if (isNaN(ss) || isNaN(se)) return false;
   if (ss < t2m(cfg.start) || se > t2m(cfg.end)) return false;
   for (const b of cfg.breaks||[]) if (ss < t2m(b.end) && se > t2m(b.start)) return false;
-  for (const b of (dayBlocks[staffId]||[]).filter(b=>b.date===date))
+  for (const b of (dayBlocks[staffId]||[]).filter(b=>b.date===date)) {
+    if (!b.start_time || !b.end_time) continue;
     if (ss < t2m(b.end_time.slice(0,5)) && se > t2m(b.start_time.slice(0,5))) return false;
+  }
   return !bookings.some(b => {
     if (b.staff_id!==staffId||b.date!==date||b.status==='cancelled') return false;
-    const bs=t2m((b.time||'').slice(0,5)), be=bs+b.service_duration;
+    if (!b.time || !b.service_duration) return false;
+    const bs=t2m(b.time.slice(0,5)), be=bs+b.service_duration;
     return ss<be && se>bs;
   });
 }
@@ -422,7 +427,7 @@ function UserHome({ user, profile, bookings, setTab, staff, services }) {
             <div style={{display:'flex',gap:20}}>
               {[
                 ['Data',    new Date(next.date).toLocaleDateString('it-IT',{day:'numeric',month:'long'})],
-                ['Orario',  next.time.slice(0,5)],
+                ['Orario',  (next.time||'').slice(0,5)],
                 ['Barbiere',staffMember?.name||'—'],
               ].map(([k,v]) => (
                 <div key={k}>
@@ -1241,7 +1246,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
         </div>
         {todayBks.length===0
           ? <p style={{fontSize:13,color:'var(--ink3)',textAlign:'center',padding:'20px 0'}}>Nessun appuntamento oggi</p>
-          : todayBks.sort((a,b)=>a.time?.localeCompare(b.time)).map(b=>{
+          : todayBks.sort((a,b)=>(a.time||'00:00').localeCompare(b.time||'00:00')).map(b=>{
             const s=staff.find(st=>st.id===b.staff_id);
             return(
               <div key={b.id} style={{display:'flex',gap:12,alignItems:'center',padding:'12px 0',borderBottom:'1px solid var(--border)'}}>
@@ -1949,34 +1954,38 @@ function App() {
 
   const loadAppData = async () => {
     setDataLoad(true);
-    const today = toLocalDate(new Date());
-    const [staffRes, svcRes, bkRes, schRes, blkRes] = await Promise.all([
-      supabase.from('staff').select('*').eq('active', true).order('id'),
-      supabase.from('services').select('*').eq('active', true).order('id'),
-      profile?.is_admin
-        ? supabase.from('bookings').select('*, profiles(name, phone)').order('date', {ascending:false}).order('time', {ascending:true})
-        : supabase.from('bookings').select('*, staff(name, color, initials)').order('date', {ascending:false}).order('time', {ascending:true}),
-      supabase.from('staff_schedules').select('*'),
-      supabase.from('staff_day_blocks').select('*').gte('date', today).order('date'),
-    ]);
+    try {
+      const today = toLocalDate(new Date());
+      const [staffRes, svcRes, bkRes, schRes, blkRes] = await Promise.all([
+        supabase.from('staff').select('*').eq('active', true).order('id'),
+        supabase.from('services').select('*').eq('active', true).order('id'),
+        profile?.is_admin
+          ? supabase.from('bookings').select('*, profiles(name, phone)').order('date', {ascending:false}).order('time', {ascending:true})
+          : supabase.from('bookings').select('*, staff(name, color, initials)').order('date', {ascending:false}).order('time', {ascending:true}),
+        supabase.from('staff_schedules').select('*'),
+        supabase.from('staff_day_blocks').select('*').gte('date', today).order('date'),
+      ]);
 
-    if (staffRes.data) setStaff(staffRes.data);
-    if (svcRes.data)   setServices(svcRes.data);
-    if (bkRes.data)    setBookings(bkRes.data);
-    if (schRes.data) {
-      const schMap = {};
-      schRes.data.forEach(s => {
-        schMap[s.staff_id] = s.weekly_config || {...DEFAULT_WEEKLY_CONFIG};
-      });
-      setSchedules(schMap);
-    }
-    if (blkRes.data) {
-      const blkMap = {};
-      blkRes.data.forEach(b => {
-        if (!blkMap[b.staff_id]) blkMap[b.staff_id] = [];
-        blkMap[b.staff_id].push(b);
-      });
-      setDayBlocks(blkMap);
+      if (staffRes.data) setStaff(staffRes.data);
+      if (svcRes.data)   setServices(svcRes.data);
+      if (bkRes.data)    setBookings(bkRes.data);
+      if (schRes.data) {
+        const schMap = {};
+        schRes.data.forEach(s => {
+          schMap[s.staff_id] = s.weekly_config || {...DEFAULT_WEEKLY_CONFIG};
+        });
+        setSchedules(schMap);
+      }
+      if (blkRes.data) {
+        const blkMap = {};
+        blkRes.data.forEach(b => {
+          if (!blkMap[b.staff_id]) blkMap[b.staff_id] = [];
+          blkMap[b.staff_id].push(b);
+        });
+        setDayBlocks(blkMap);
+      }
+    } catch(e) {
+      console.error('loadAppData error:', e);
     }
     setDataLoad(false);
   };
