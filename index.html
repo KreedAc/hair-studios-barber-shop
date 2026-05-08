@@ -229,6 +229,20 @@ const getWeekDates = (offset = 0) => {
   });
 };
 
+// Calcola il weekOffset per saltare al primo lunedì del mese delta (+1/-1)
+const jumpMonthOffset = (weekDates, delta) => {
+  const first = weekDates[0];
+  const target = new Date(first.getFullYear(), first.getMonth() + delta, 1);
+  const dow = target.getDay();
+  const monday = new Date(target);
+  monday.setDate(target.getDate() - (dow === 0 ? 6 : dow - 1));
+  const now = new Date(); now.setHours(0,0,0,0);
+  const todayDow = now.getDay();
+  const todayMon = new Date(now);
+  todayMon.setDate(now.getDate() - (todayDow === 0 ? 6 : todayDow - 1));
+  return Math.max(0, Math.round((monday - todayMon) / 604800000));
+};
+
 const toLocalDate = (d) => {
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,'0');
@@ -322,14 +336,7 @@ function AuthScreen({ onLogin }) {
   return (
     <div className="screen" style={{justifyContent:'center', padding:'0 32px', paddingTop:'env(safe-area-inset-top)'}}>
       <div style={{marginBottom:36, textAlign:'center'}}>
-        <div style={{width:72,height:72,background:'var(--ink)',borderRadius:20,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px',boxShadow:'0 8px 24px oklch(10% 0.005 90 / 0.25)'}}>
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-            <path d="M10 8 Q10 4 14 4 Q14 8 18 8 Q22 8 22 4 Q26 4 26 8 L26 14 Q26 20 18 24 Q10 20 10 14 Z" fill="white" opacity="0.9"/>
-            <path d="M18 24 L18 32" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-            <circle cx="12" cy="30" r="2" fill="white" opacity="0.6"/>
-            <circle cx="24" cy="30" r="2" fill="white" opacity="0.6"/>
-          </svg>
-        </div>
+        <img src="/logo.png" alt="Hair Studios" style={{width:120,height:120,objectFit:'contain',margin:'0 auto 20px',display:'block'}} />
         <h1 style={{fontSize:28,fontWeight:700,color:'var(--ink)',letterSpacing:-0.5,lineHeight:1.1}}>Hair Studios</h1>
         <p style={{fontSize:13,color:'var(--ink3)',marginTop:6}}>Barber Shop</p>
       </div>
@@ -586,9 +593,15 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
         {step===2&&selectedStaff&&(
           <>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-              <button className="btn-icon" onClick={()=>{setWeekOffset(o=>Math.max(0,o-1));setTime(null);setDate(null);}} style={{opacity:weekOffset===0?0.3:1}}>←</button>
+              <div style={{display:'flex',gap:2}}>
+                <button className="btn-icon" onClick={()=>{setWeekOffset(jumpMonthOffset(weekDates,-1));setTime(null);setDate(null);}} style={{opacity:weekOffset===0?0.3:1,fontSize:15}}>«</button>
+                <button className="btn-icon" onClick={()=>{setWeekOffset(o=>Math.max(0,o-1));setTime(null);setDate(null);}} style={{opacity:weekOffset===0?0.3:1}}>‹</button>
+              </div>
               <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{MONTHS[weekDates[0].getMonth()]} {weekDates[0].getFullYear()}</span>
-              <button className="btn-icon" onClick={()=>{setWeekOffset(o=>o+1);setTime(null);setDate(null);}}>→</button>
+              <div style={{display:'flex',gap:2}}>
+                <button className="btn-icon" onClick={()=>{setWeekOffset(o=>o+1);setTime(null);setDate(null);}}>›</button>
+                <button className="btn-icon" onClick={()=>{setWeekOffset(jumpMonthOffset(weekDates,1));setTime(null);setDate(null);}}>»</button>
+              </div>
             </div>
             <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingBottom:4}}>
               {weekDates.map((d,i) => {
@@ -701,9 +714,15 @@ function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
       <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
         <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',marginBottom:16,letterSpacing:-0.3}}>Le mie prenotazioni</h2>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-          <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>←</button>
+          <div style={{display:'flex',gap:2}}>
+            <button className="btn-icon" onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,-1))} style={{opacity:weekOffset===0?0.3:1,fontSize:15}}>«</button>
+            <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>‹</button>
+          </div>
           <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{weekDates[0].getDate()} – {weekDates[6].getDate()} {MONTHS[weekDates[0].getMonth()]}</span>
-          <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>→</button>
+          <div style={{display:'flex',gap:2}}>
+            <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>›</button>
+            <button className="btn-icon" onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,1))}>»</button>
+          </div>
         </div>
         <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingBottom:2}}>
           <button onClick={()=>setSelectedDay(null)}
@@ -919,9 +938,15 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
               ))}
             </div>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-              <button className="btn-icon" style={{width:32,height:32,fontSize:14}} onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} disabled={weekOffset===0}>←</button>
+              <div style={{display:'flex',gap:2}}>
+                <button className="btn-icon" style={{width:32,height:32,fontSize:13}} onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,-1))} disabled={weekOffset===0}>«</button>
+                <button className="btn-icon" style={{width:32,height:32,fontSize:14}} onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} disabled={weekOffset===0}>‹</button>
+              </div>
               <span style={{fontSize:12,fontWeight:600,color:'var(--ink)'}}>{weekDates[0].getDate()}–{weekDates[6].getDate()} {MONTHS[weekDates[0].getMonth()]}</span>
-              <button className="btn-icon" style={{width:32,height:32,fontSize:14}} onClick={()=>setWeekOffset(o=>o+1)}>→</button>
+              <div style={{display:'flex',gap:2}}>
+                <button className="btn-icon" style={{width:32,height:32,fontSize:14}} onClick={()=>setWeekOffset(o=>o+1)}>›</button>
+                <button className="btn-icon" style={{width:32,height:32,fontSize:13}} onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,1))}>»</button>
+              </div>
             </div>
             <div style={{display:'flex',gap:4,marginBottom:12,overflowX:'auto'}}>
               {weekDates.map((d,i)=>{
@@ -1102,9 +1127,15 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
         {step===3&&selectedStaff&&(
           <>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-              <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>←</button>
+              <div style={{display:'flex',gap:2}}>
+                <button className="btn-icon" onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,-1))} style={{opacity:weekOffset===0?0.3:1,fontSize:15}}>«</button>
+                <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>‹</button>
+              </div>
               <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{MONTHS[weekDates[0].getMonth()]} {weekDates[0].getFullYear()}</span>
-              <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>→</button>
+              <div style={{display:'flex',gap:2}}>
+                <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>›</button>
+                <button className="btn-icon" onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,1))}>»</button>
+              </div>
             </div>
             <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingBottom:4}}>
               {weekDates.map((d,i)=>{
@@ -1295,9 +1326,15 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, schedules, dayBlo
       <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
         <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',marginBottom:12,letterSpacing:-0.3}}>Calendario</h2>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-          <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>←</button>
+          <div style={{display:'flex',gap:2}}>
+            <button className="btn-icon" onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,-1))} style={{opacity:weekOffset===0?0.3:1,fontSize:15}}>«</button>
+            <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>‹</button>
+          </div>
           <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{weekDates[0].getDate()} – {weekDates[5].getDate()} {MONTHS[weekDates[0].getMonth()]}</span>
-          <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>→</button>
+          <div style={{display:'flex',gap:2}}>
+            <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>›</button>
+            <button className="btn-icon" onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,1))}>»</button>
+          </div>
         </div>
         <div style={{display:'flex',gap:4,marginBottom:12}}>
           {weekDates.slice(0,6).map((d,i)=>{
