@@ -229,10 +229,9 @@ const getWeekDates = (offset = 0) => {
   });
 };
 
-// Calcola il weekOffset per saltare al primo lunedì del mese delta (+1/-1)
-const jumpMonthOffset = (weekDates, delta) => {
-  const first = weekDates[0];
-  const target = new Date(first.getFullYear(), first.getMonth() + delta, 1);
+// Calcola il weekOffset per il primo lunedì di un dato mese/anno
+const offsetForMonthYear = (year, month) => {
+  const target = new Date(year, month, 1);
   const dow = target.getDay();
   const monday = new Date(target);
   monday.setDate(target.getDate() - (dow === 0 ? 6 : dow - 1));
@@ -242,6 +241,48 @@ const jumpMonthOffset = (weekDates, delta) => {
   todayMon.setDate(now.getDate() - (todayDow === 0 ? 6 : todayDow - 1));
   return Math.max(0, Math.round((monday - todayMon) / 604800000));
 };
+
+function MonthYearPicker({ weekDates, setWeekOffset, onClose, onSelect }) {
+  const curYear  = weekDates[0].getFullYear();
+  const curMonth = weekDates[0].getMonth();
+  const [pickerYear, setPickerYear] = React.useState(curYear);
+  const nowYear  = new Date().getFullYear();
+  const nowMonth = new Date().getMonth();
+  const select = (m) => {
+    setWeekOffset(offsetForMonthYear(pickerYear, m));
+    if (onSelect) onSelect();
+    onClose();
+  };
+  return (
+    <>
+      <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:49}} />
+      <div style={{position:'absolute',top:'calc(100% + 6px)',left:'50%',transform:'translateX(-50%)',
+        zIndex:50,background:'var(--bg)',border:'1px solid var(--border)',borderRadius:14,
+        padding:14,boxShadow:'0 8px 32px rgba(0,0,0,0.15)',minWidth:220}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+          <button className="btn-icon" onClick={()=>setPickerYear(y=>Math.max(nowYear,y-1))} style={{opacity:pickerYear<=nowYear?0.3:1}} disabled={pickerYear<=nowYear}>←</button>
+          <span style={{fontWeight:700,fontSize:15,color:'var(--ink)'}}>{pickerYear}</span>
+          <button className="btn-icon" onClick={()=>setPickerYear(y=>y+1)}>→</button>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6}}>
+          {MONTHS.map((m,i) => {
+            const isPast = pickerYear===nowYear && i<nowMonth;
+            const isCur  = pickerYear===curYear  && i===curMonth;
+            return (
+              <button key={i} disabled={isPast} onClick={()=>select(i)}
+                style={{padding:'8px 4px',borderRadius:8,fontSize:12,fontWeight:600,border:'none',cursor:isPast?'default':'pointer',
+                  background:isCur?'var(--ink)':'var(--bg2)',
+                  color:isCur?'white':isPast?'var(--ink3)':'var(--ink)',
+                  opacity:isPast?0.35:1}}>
+                {m.slice(0,3)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
 
 const toLocalDate = (d) => {
   const y = d.getFullYear();
@@ -470,6 +511,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
   const [time, setTime]                   = useState(null);
   const [weekOffset, setWeekOffset]       = useState(0);
   const [selectedDay, setSelectedDay]     = useState(0);
+  const [showPicker, setShowPicker]       = useState(false);
   const [busy, setBusy]                   = useState(false);
   const weekDates = getWeekDates(weekOffset);
   const totalDuration = selectedServices.reduce((a,s)=>a+s.duration,0);
@@ -593,15 +635,15 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
         {step===2&&selectedStaff&&(
           <>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-              <div style={{display:'flex',gap:2}}>
-                <button className="btn-icon" onClick={()=>{setWeekOffset(jumpMonthOffset(weekDates,-1));setTime(null);setDate(null);}} style={{opacity:weekOffset===0?0.3:1,fontSize:15}}>«</button>
-                <button className="btn-icon" onClick={()=>{setWeekOffset(o=>Math.max(0,o-1));setTime(null);setDate(null);}} style={{opacity:weekOffset===0?0.3:1}}>‹</button>
+              <button className="btn-icon" onClick={()=>{setWeekOffset(o=>Math.max(0,o-1));setTime(null);setDate(null);}} style={{opacity:weekOffset===0?0.3:1}}>‹</button>
+              <div style={{position:'relative'}}>
+                <button onClick={()=>setShowPicker(p=>!p)}
+                  style={{fontSize:13,fontWeight:600,color:'var(--ink)',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 12px',cursor:'pointer'}}>
+                  {MONTHS[weekDates[0].getMonth()]} {weekDates[0].getFullYear()} ▾
+                </button>
+                {showPicker && <MonthYearPicker weekDates={weekDates} setWeekOffset={setWeekOffset} onClose={()=>setShowPicker(false)} onSelect={()=>{setTime(null);setDate(null);}} />}
               </div>
-              <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{MONTHS[weekDates[0].getMonth()]} {weekDates[0].getFullYear()}</span>
-              <div style={{display:'flex',gap:2}}>
-                <button className="btn-icon" onClick={()=>{setWeekOffset(o=>o+1);setTime(null);setDate(null);}}>›</button>
-                <button className="btn-icon" onClick={()=>{setWeekOffset(jumpMonthOffset(weekDates,1));setTime(null);setDate(null);}}>»</button>
-              </div>
+              <button className="btn-icon" onClick={()=>{setWeekOffset(o=>o+1);setTime(null);setDate(null);}}>›</button>
             </div>
             <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingBottom:4}}>
               {weekDates.map((d,i) => {
@@ -695,6 +737,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
 function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState(null);
+  const [showPicker, setShowPicker] = useState(false);
   const weekDates = getWeekDates(weekOffset);
 
   const myBookings = bookings.filter(b => b.user_id===profile.id);
@@ -714,15 +757,15 @@ function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
       <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
         <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',marginBottom:16,letterSpacing:-0.3}}>Le mie prenotazioni</h2>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-          <div style={{display:'flex',gap:2}}>
-            <button className="btn-icon" onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,-1))} style={{opacity:weekOffset===0?0.3:1,fontSize:15}}>«</button>
-            <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>‹</button>
+          <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>‹</button>
+          <div style={{position:'relative'}}>
+            <button onClick={()=>setShowPicker(p=>!p)}
+              style={{fontSize:13,fontWeight:600,color:'var(--ink)',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 12px',cursor:'pointer'}}>
+              {MONTHS[weekDates[0].getMonth()]} {weekDates[0].getFullYear()} ▾
+            </button>
+            {showPicker && <MonthYearPicker weekDates={weekDates} setWeekOffset={setWeekOffset} onClose={()=>setShowPicker(false)} />}
           </div>
-          <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{weekDates[0].getDate()} – {weekDates[6].getDate()} {MONTHS[weekDates[0].getMonth()]}</span>
-          <div style={{display:'flex',gap:2}}>
-            <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>›</button>
-            <button className="btn-icon" onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,1))}>»</button>
-          </div>
+          <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>›</button>
         </div>
         <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingBottom:2}}>
           <button onClick={()=>setSelectedDay(null)}
@@ -857,6 +900,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
   const [mode, setMode]         = useState('menu');
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState(0);
+  const [showPicker, setShowPicker] = useState(false);
   const [newTime, setNewTime]   = useState(null);
   const [newStaff, setNewStaff] = useState(booking.staff_id);
   const [busy, setBusy]         = useState(false);
@@ -938,15 +982,15 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
               ))}
             </div>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-              <div style={{display:'flex',gap:2}}>
-                <button className="btn-icon" style={{width:32,height:32,fontSize:13}} onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,-1))} disabled={weekOffset===0}>«</button>
-                <button className="btn-icon" style={{width:32,height:32,fontSize:14}} onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} disabled={weekOffset===0}>‹</button>
+              <button className="btn-icon" style={{width:32,height:32,fontSize:14}} onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} disabled={weekOffset===0}>‹</button>
+              <div style={{position:'relative'}}>
+                <button onClick={()=>setShowPicker(p=>!p)}
+                  style={{fontSize:12,fontWeight:600,color:'var(--ink)',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 10px',cursor:'pointer'}}>
+                  {MONTHS[weekDates[0].getMonth()]} {weekDates[0].getFullYear()} ▾
+                </button>
+                {showPicker && <MonthYearPicker weekDates={weekDates} setWeekOffset={setWeekOffset} onClose={()=>setShowPicker(false)} />}
               </div>
-              <span style={{fontSize:12,fontWeight:600,color:'var(--ink)'}}>{weekDates[0].getDate()}–{weekDates[6].getDate()} {MONTHS[weekDates[0].getMonth()]}</span>
-              <div style={{display:'flex',gap:2}}>
-                <button className="btn-icon" style={{width:32,height:32,fontSize:14}} onClick={()=>setWeekOffset(o=>o+1)}>›</button>
-                <button className="btn-icon" style={{width:32,height:32,fontSize:13}} onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,1))}>»</button>
-              </div>
+              <button className="btn-icon" style={{width:32,height:32,fontSize:14}} onClick={()=>setWeekOffset(o=>o+1)}>›</button>
             </div>
             <div style={{display:'flex',gap:4,marginBottom:12,overflowX:'auto'}}>
               {weekDates.map((d,i)=>{
@@ -1007,6 +1051,7 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
   const [time, setTime]           = useState(null);
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState(0);
+  const [showPicker, setShowPicker] = useState(false);
   const [busy, setBusy]           = useState(false);
   const weekDates = getWeekDates(weekOffset);
   const totalDuration = selectedServices.reduce((a,s)=>a+s.duration, 0);
@@ -1127,15 +1172,15 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
         {step===3&&selectedStaff&&(
           <>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-              <div style={{display:'flex',gap:2}}>
-                <button className="btn-icon" onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,-1))} style={{opacity:weekOffset===0?0.3:1,fontSize:15}}>«</button>
-                <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>‹</button>
+              <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>‹</button>
+              <div style={{position:'relative'}}>
+                <button onClick={()=>setShowPicker(p=>!p)}
+                  style={{fontSize:13,fontWeight:600,color:'var(--ink)',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 12px',cursor:'pointer'}}>
+                  {MONTHS[weekDates[0].getMonth()]} {weekDates[0].getFullYear()} ▾
+                </button>
+                {showPicker && <MonthYearPicker weekDates={weekDates} setWeekOffset={setWeekOffset} onClose={()=>setShowPicker(false)} onSelect={()=>{setTime(null);setDate(null);}} />}
               </div>
-              <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{MONTHS[weekDates[0].getMonth()]} {weekDates[0].getFullYear()}</span>
-              <div style={{display:'flex',gap:2}}>
-                <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>›</button>
-                <button className="btn-icon" onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,1))}>»</button>
-              </div>
+              <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>›</button>
             </div>
             <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingBottom:4}}>
               {weekDates.map((d,i)=>{
@@ -1308,6 +1353,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
 function AdminCalendar({ bookings, onRefresh, setToast, staff, schedules, dayBlocks }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState(0);
+  const [showPicker, setShowPicker] = useState(false);
   const [activeBooking, setActiveBooking] = useState(null);
   const weekDates = getWeekDates(weekOffset);
 
@@ -1326,15 +1372,15 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, schedules, dayBlo
       <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
         <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',marginBottom:12,letterSpacing:-0.3}}>Calendario</h2>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-          <div style={{display:'flex',gap:2}}>
-            <button className="btn-icon" onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,-1))} style={{opacity:weekOffset===0?0.3:1,fontSize:15}}>«</button>
-            <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>‹</button>
+          <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>‹</button>
+          <div style={{position:'relative'}}>
+            <button onClick={()=>setShowPicker(p=>!p)}
+              style={{fontSize:13,fontWeight:600,color:'var(--ink)',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 12px',cursor:'pointer'}}>
+              {MONTHS[weekDates[0].getMonth()]} {weekDates[0].getFullYear()} ▾
+            </button>
+            {showPicker && <MonthYearPicker weekDates={weekDates} setWeekOffset={setWeekOffset} onClose={()=>setShowPicker(false)} />}
           </div>
-          <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{weekDates[0].getDate()} – {weekDates[5].getDate()} {MONTHS[weekDates[0].getMonth()]}</span>
-          <div style={{display:'flex',gap:2}}>
-            <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>›</button>
-            <button className="btn-icon" onClick={()=>setWeekOffset(jumpMonthOffset(weekDates,1))}>»</button>
-          </div>
+          <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>›</button>
         </div>
         <div style={{display:'flex',gap:4,marginBottom:12}}>
           {weekDates.slice(0,6).map((d,i)=>{
