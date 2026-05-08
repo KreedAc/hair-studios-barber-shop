@@ -1435,9 +1435,16 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, schedules, dayBlo
         <div style={{position:'relative',marginTop:8}}>
           {DISPLAY_HOURS.map(h=>(
             <div key={h} style={{display:'grid',gridTemplateColumns:'48px 1fr 1fr',height:72,position:'relative'}}>
+              {/* Riga intera ora */}
               <div style={{paddingRight:8,textAlign:'right'}}><span style={{fontSize:13,color:'var(--ink2)',fontWeight:600,fontFamily:"'Cormorant Garamond',serif"}}>{h}</span></div>
               <div style={{borderTop:'1px solid var(--border)'}}></div>
               <div style={{borderTop:'1px solid var(--border)',borderLeft:'1px solid var(--border)'}}></div>
+              {/* Riga mezzora */}
+              <div style={{position:'absolute',top:36,left:0,right:0,display:'grid',gridTemplateColumns:'48px 1fr 1fr',pointerEvents:'none'}}>
+                <div style={{paddingRight:8,textAlign:'right'}}><span style={{fontSize:10,color:'var(--ink3)',fontFamily:"'Cormorant Garamond',serif"}}>:30</span></div>
+                <div style={{borderTop:'1px dashed var(--border)'}}></div>
+                <div style={{borderTop:'1px dashed var(--border)',borderLeft:'1px solid var(--border)'}}></div>
+              </div>
             </div>
           ))}
           <div style={{position:'absolute',top:0,left:48,right:0,bottom:0,display:'grid',gridTemplateColumns:'1fr 1fr',gap:0}}>
