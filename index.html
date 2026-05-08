@@ -681,7 +681,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
                 return (
                   <button key={h} disabled={!avail} onClick={()=>{setTime(h);setDate(dStr);}}
                     style={{padding:'12px 8px',borderRadius:10,border:'1.5px solid',textAlign:'center',
-                      fontSize:13,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",
+                      fontSize:15,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",
                       background:isSel?'var(--ink)':avail?'oklch(93% 0.07 145)':'oklch(94% 0.04 15)',
                       color:isSel?'white':avail?'oklch(32% 0.14 145)':'oklch(45% 0.1 15)',
                       borderColor:isSel?'var(--ink)':avail?'oklch(76% 0.11 145)':'oklch(82% 0.07 15)',
@@ -799,7 +799,8 @@ function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
                 <div>
                   <p style={{fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>{b.service_name}</p>
-                  <p style={{fontSize:12,color:'var(--ink3)',marginTop:2}}>{new Date(b.date).toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'long'})} · {b.time?.slice(0,5)}</p>
+                  <p style={{fontSize:12,color:'var(--ink3)',marginTop:2}}>{new Date(b.date).toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'long'})}</p>
+                  <p style={{fontSize:17,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)',marginTop:2}}>{b.time?.slice(0,5)}</p>
                 </div>
                 <span className={`badge ${b.status==='confirmed'?'badge-green':'badge-gold'}`}>
                   {b.status==='confirmed'?'✓ Confermata':'◌ In attesa'}
@@ -1021,7 +1022,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
                 const sel=newTime===h;
                 return(
                   <button key={h} disabled={disabled} onClick={()=>!disabled&&setNewTime(h)}
-                    style={{padding:'10px 4px',borderRadius:8,border:'1.5px solid',textAlign:'center',fontSize:12,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",
+                    style={{padding:'10px 4px',borderRadius:8,border:'1.5px solid',textAlign:'center',fontSize:15,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",
                       background:sel?'var(--ink)':!disabled?'oklch(93% 0.07 145)':'oklch(94% 0.04 15)',
                       color:sel?'white':!disabled?'oklch(32% 0.14 145)':'oklch(45% 0.1 15)',
                       borderColor:sel?'var(--ink)':!disabled?'oklch(76% 0.11 145)':'oklch(82% 0.07 15)',
@@ -1213,7 +1214,7 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
                 return(
                   <button key={h} disabled={!avail} onClick={()=>{setTime(h);setDate(dStr);}}
                     style={{padding:'12px 8px',borderRadius:10,border:'1.5px solid',textAlign:'center',
-                      fontSize:13,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",
+                      fontSize:15,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",
                       background:isSel?'var(--ink)':avail?'oklch(93% 0.07 145)':'oklch(94% 0.04 15)',
                       color:isSel?'white':avail?'oklch(32% 0.14 145)':'oklch(45% 0.1 15)',
                       borderColor:isSel?'var(--ink)':avail?'oklch(76% 0.11 145)':'oklch(82% 0.07 15)',
