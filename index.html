@@ -321,7 +321,7 @@ const mapBooking = (b) => ({
 });
 
 // ── BOTTOM NAV ──────────────────────────────────────────────────
-function BottomNav({ tab, setTab, isAdmin }) {
+function BottomNav({ tab, setTab, isAdmin, onRefresh }) {
   const userTabs = [
     { id:'home',     label:'Home',       icon:'⊞' },
     { id:'booking',  label:'Prenota',    icon:'✦' },
@@ -339,7 +339,7 @@ function BottomNav({ tab, setTab, isAdmin }) {
   return (
     <nav className="bottom-nav">
       {tabs.map(t => (
-        <button key={t.id} className={`nav-item ${tab===t.id?'active':''}`} onClick={() => setTab(t.id)}>
+        <button key={t.id} className={`nav-item ${tab===t.id?'active':''}`} onClick={() => { if (tab===t.id && (t.id==='admin-dash'||t.id==='home') && onRefresh) { onRefresh(); } else { setTab(t.id); } }}>
           <span className="nav-icon">{t.icon}</span>
           <span className="nav-label">{t.label}</span>
         </button>
@@ -2145,7 +2145,7 @@ function App() {
           </div>
         ))}
       </div>
-      <BottomNav tab={tab} setTab={setTab} isAdmin={isAdmin} />
+      <BottomNav tab={tab} setTab={setTab} isAdmin={isAdmin} onRefresh={loadAppData} />
       {toast && <Toast message={toast} onDone={()=>setToast(null)} />}
     </div>
   );
