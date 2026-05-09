@@ -1259,7 +1259,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
   const today = TODAY();
   const todayBks   = bookings.filter(b=>b.date===today&&b.status!=='cancelled');
   const pending    = bookings.filter(b=>b.status==='pending');
-  const confirmed  = bookings.filter(b=>b.status==='confirmed').length;
+  const confirmed  = bookings.filter(b=>b.status==='confirmed'&&b.date>=today).length;
   const [activeBooking, setActiveBooking] = useState(null);
   const [manualBooking, setManualBooking] = useState(false);
 
@@ -1283,7 +1283,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
 
   return (
     <div className="screen" style={{position:'relative'}}>
-      <div className="scroll-content" style={{padding:'env(safe-area-inset-top,16px) 24px 24px',paddingTop:16}}>
+      <div className="scroll-content" style={{padding:'env(safe-area-inset-top,16px) 24px 0',paddingTop:16}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24}}>
           <div>
             <p style={{fontSize:12,color:'var(--ink3)',fontWeight:500}}>Dashboard</p>
@@ -1342,6 +1342,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
         <div className="section-header">
           <span className="section-title">Oggi, {new Date().toLocaleDateString('it-IT',{day:'numeric',month:'long'})}</span>
         </div>
+        <div style={{overflowY:'auto',maxHeight:'50vh',borderRadius:'var(--radius-sm)'}}>
         {todayBks.length===0
           ? <p style={{fontSize:13,color:'var(--ink3)',textAlign:'center',padding:'20px 0'}}>Nessun appuntamento oggi</p>
           : todayBks.sort((a,b)=>(a.time||'00:00').localeCompare(b.time||'00:00')).map(b=>{
@@ -1360,6 +1361,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
             );
           })
         }
+        </div>
       </div>
       {activeBooking&&(
         <BookingActionModal booking={activeBooking} bookings={bookings} staff={staff}
