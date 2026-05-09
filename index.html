@@ -1259,7 +1259,9 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
   const today = TODAY();
   const todayBks   = bookings.filter(b=>b.date===today&&b.status!=='cancelled');
   const pending    = bookings.filter(b=>b.status==='pending');
-  const confirmed  = bookings.filter(b=>b.status==='confirmed').length;
+// DOPO
+const today = toLocalDate(new Date());
+const confirmed = bookings.filter(b => b.status === 'confirmed' && b.date >= today).length;
   const [activeBooking, setActiveBooking] = useState(null);
   const [manualBooking, setManualBooking] = useState(false);
 
