@@ -4,17 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Hair Studios – Barber Shop</title>
- 
+
   <!-- PWA -->
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#1a1a18" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Hair Studios" />
- 
+
   <!-- SEO & Social sharing -->
   <meta name="description" content="Registrati e prenota un appuntamento. ✂️" />
- 
+
   <!-- Open Graph (Facebook, WhatsApp, Telegram, LinkedIn) -->
   <meta property="og:type"        content="website" />
   <meta property="og:url"         content="https://hairstudiosbarbershop.com/" />
@@ -25,24 +25,24 @@
   <meta property="og:image:height" content="630" />
   <meta property="og:locale"      content="it_IT" />
   <meta property="og:site_name"   content="Hair Studios Barber Shop" />
- 
+
   <!-- Twitter / X card -->
   <meta name="twitter:card"        content="summary_large_image" />
   <meta name="twitter:title"       content="Hair Studios – Barber Shop" />
   <meta name="twitter:description" content="Registrati e prenota un appuntamento. ✂️" />
   <meta name="twitter:image"       content="https://hairstudiosbarbershop.com/og-image.png" />
- 
+
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Jost:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
- 
+
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
- 
+
   <!-- React + Babel -->
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
- 
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -61,7 +61,7 @@
       --shadow:    0 2px 16px oklch(10% 0.005 90 / 0.07);
       --shadow-md: 0 4px 28px oklch(10% 0.005 90 / 0.12);
     }
- 
+
     html { height: 100%; }
     body {
       height: 100%;
@@ -69,7 +69,7 @@
       font-family: 'Jost', sans-serif;
       -webkit-tap-highlight-color: transparent;
     }
- 
+
     #root {
       min-height: 100dvh;
       display: flex;
@@ -79,21 +79,21 @@
       margin: 0 auto;
       background: var(--bg);
     }
- 
+
     h1,h2,h3,h4 { font-family: 'Cormorant Garamond', serif; }
     button { cursor: pointer; border: none; background: none; font-family: 'Jost', sans-serif; }
     input, select, textarea { font-family: 'Jost', sans-serif; }
- 
+
     ::-webkit-scrollbar { width: 3px; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
- 
+
     .screen {
       position: absolute; inset: 0;
       display: flex; flex-direction: column;
       background: var(--bg);
       overflow: hidden;
     }
- 
+
     .bottom-nav {
       height: 64px;
       background: var(--bg);
@@ -113,9 +113,9 @@
     .nav-item.active .nav-label { color: var(--ink); font-weight: 600; }
     .nav-icon  { font-size: 19px; color: var(--ink3); transition: color 0.15s; }
     .nav-label { font-size: 10px; color: var(--ink3); font-weight: 500; letter-spacing: 0.3px; }
- 
+
     .scroll-content { flex: 1; overflow-y: auto; overflow-x: hidden; }
- 
+
     .btn-primary  { background: var(--ink); color: var(--bg); padding: 16px 24px; border-radius: var(--radius-sm); font-family: 'Cormorant Garamond', serif; font-size: 15px; font-weight: 700; width: 100%; letter-spacing: 0.3px; transition: transform 0.12s, box-shadow 0.12s; }
     .btn-primary:hover  { transform: translateY(-1px); box-shadow: var(--shadow-md); }
     .btn-primary:active { transform: translateY(0); }
@@ -125,77 +125,77 @@
     .btn-gold:hover { transform: translateY(-1px); box-shadow: 0 4px 20px oklch(72% 0.12 85 / 0.35); }
     .btn-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--bg2); color: var(--ink); transition: background 0.15s; font-size: 18px; flex-shrink: 0; }
     .btn-icon:hover { background: var(--bg3); }
- 
+
     .input-group { display: flex; flex-direction: column; gap: 6px; }
     .input-label { font-size: 12px; font-weight: 600; color: var(--ink2); letter-spacing: 0.5px; text-transform: uppercase; }
     .input-field { background: var(--bg2); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 13px 16px; font-size: 15px; color: var(--ink); outline: none; transition: border-color 0.15s, box-shadow 0.15s; width: 100%; }
     .input-field:focus { border-color: var(--ink); box-shadow: 0 0 0 3px oklch(10% 0.005 90 / 0.06); }
     .input-field::placeholder { color: var(--ink3); }
- 
+
     .card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
     .card-dark { background: var(--ink); border-radius: var(--radius); padding: 24px; color: var(--bg); }
- 
+
     .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px; }
     .badge-gold  { background: var(--gold-bg);                    color: var(--gold); }
     .badge-green { background: oklch(95% 0.05 145);               color: oklch(40% 0.12 145); }
     .badge-red   { background: oklch(97% 0.04 20);                color: oklch(45% 0.18 25); }
     .badge-gray  { background: var(--bg3);                        color: var(--ink2); }
- 
+
     .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
     .section-title  { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 700; color: var(--ink); }
     .section-link   { font-size: 13px; color: var(--gold); font-weight: 600; }
- 
+
     .divider { height: 1px; background: var(--border); margin: 16px 0; }
- 
+
     .avatar { border-radius: 50%; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-family: 'Cormorant Garamond', serif; font-weight: 700; color: var(--ink); overflow: hidden; flex-shrink: 0; }
- 
+
     .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 12px 20px; border-radius: 99px; font-size: 13px; font-weight: 500; white-space: nowrap; z-index: 999; animation: toast-in 0.3s ease; box-shadow: var(--shadow-md); }
     @keyframes toast-in { from { opacity:0; transform: translateX(-50%) translateY(10px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
- 
+
     .chip { display: inline-flex; align-items: center; padding: 8px 16px; border-radius: 99px; font-size: 13px; font-weight: 500; border: 1.5px solid var(--border); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
     .chip.selected { background: var(--ink); color: var(--bg); border-color: var(--ink); }
     .chip:not(.selected):hover { border-color: var(--ink2); }
- 
+
     .step-indicator { display: flex; gap: 6px; align-items: center; justify-content: center; }
     .step-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); transition: all 0.2s; }
     .step-dot.active { width: 20px; border-radius: 3px; background: var(--ink); }
     .step-dot.done   { background: var(--gold); }
- 
+
     .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--ink); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
- 
+
     .loading-screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 50; }
   </style>
 </head>
 <body>
 <div id="root"></div>
- 
+
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
 </script>
- 
+
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
- 
+
 // ── SUPABASE CONFIG ─────────────────────────────────────────────
 // Sostituisci con le tue credenziali da supabase.com → Project Settings → API
 const SUPABASE_URL      = 'https://pzdnvygxnosmxrjfjvsv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6ZG52eWd4bm9zbXhyamZqdnN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNjM2NDksImV4cCI6MjA5MzYzOTY0OX0.oCH4wdzQdY1wCH_LqUFFbAkw0kWpPVLMtpPWE5D2Cd8';
- 
+
 const CONFIG_READY = SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20;
 const supabase = CONFIG_READY
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
- 
+
 // ── COSTANTI ────────────────────────────────────────────────────
 const DAYS_SHORT = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
 const DAYS_ABBR  = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
 const DAYS_FULL  = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'];
 const MONTHS     = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 const DEFAULT_SCHEDULE = { start:'08:00', end:'20:00', days:[true,true,true,true,true,true,false], breaks:[] };
- 
+
 const DEFAULT_WEEKLY_CONFIG = {
   "0":null,"1":null,
   "2":{"start":"09:30","end":"19:30","breaks":[{"start":"12:30","end":"15:00"}]},
@@ -204,7 +204,7 @@ const DEFAULT_WEEKLY_CONFIG = {
   "5":{"start":"09:30","end":"19:30","breaks":[{"start":"12:30","end":"15:00"}]},
   "6":{"start":"09:30","end":"18:00","breaks":[{"start":"13:00","end":"14:00"}]}
 };
- 
+
 // Verifica se uno slot è disponibile rispettando orario settimanale, pause fisse e blocchi extra
 function checkSlot(date, time, staffId, duration, bookings, schedules, dayBlocks) {
   if (!date || !time || !staffId || !duration) return false;
@@ -227,7 +227,7 @@ function checkSlot(date, time, staffId, duration, bookings, schedules, dayBlocks
     return ss<be && se>bs;
   });
 }
- 
+
 const ROLE_OPTIONS  = ['Senior Barber','Barber','Titolare','Apprendista'];
 const COLOR_OPTIONS = [
   { label:'Blu',     value:'oklch(65% 0.14 240)' },
@@ -236,7 +236,7 @@ const COLOR_OPTIONS = [
   { label:'Viola',   value:'oklch(60% 0.16 300)'  },
   { label:'Oro',     value:'oklch(65% 0.13 80)'   },
 ];
- 
+
 const getWeekDates = (offset = 0) => {
   const now = new Date();
   const day = now.getDay();
@@ -248,7 +248,7 @@ const getWeekDates = (offset = 0) => {
     return d;
   });
 };
- 
+
 // Calcola il weekOffset per il primo lunedì di un dato mese/anno
 const offsetForMonthYear = (year, month) => {
   const target = new Date(year, month, 1);
@@ -261,7 +261,7 @@ const offsetForMonthYear = (year, month) => {
   todayMon.setDate(now.getDate() - (todayDow === 0 ? 6 : todayDow - 1));
   return Math.max(0, Math.round((monday - todayMon) / 604800000));
 };
- 
+
 function MonthYearPicker({ weekDates, setWeekOffset, onClose, onSelect }) {
   const curYear  = weekDates[0].getFullYear();
   const curMonth = weekDates[0].getMonth();
@@ -303,7 +303,7 @@ function MonthYearPicker({ weekDates, setWeekOffset, onClose, onSelect }) {
     </>
   );
 }
- 
+
 const toLocalDate = (d) => {
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,'0');
@@ -311,7 +311,7 @@ const toLocalDate = (d) => {
   return `${y}-${m}-${g}`;
 };
 const TODAY = () => toLocalDate(new Date());
- 
+
 const mapBooking = (b) => ({
   ...b,
   service:     { name: b.service_name, duration: b.service_duration },
@@ -319,7 +319,7 @@ const mapBooking = (b) => ({
   staffColor:  b.staff?.color,
   staffInitials: b.staff?.initials,
 });
- 
+
 // ── BOTTOM NAV ──────────────────────────────────────────────────
 function BottomNav({ tab, setTab, isAdmin, onRefresh }) {
   const userTabs = [
@@ -347,18 +347,18 @@ function BottomNav({ tab, setTab, isAdmin, onRefresh }) {
     </nav>
   );
 }
- 
+
 // ── TOAST ───────────────────────────────────────────────────────
 function Toast({ message, onDone }) {
   useEffect(() => { const t = setTimeout(onDone, 2500); return () => clearTimeout(t); }, []);
   return <div className="toast">{message}</div>;
 }
- 
+
 // ── LOADING ─────────────────────────────────────────────────────
 function LoadingScreen() {
   return <div className="loading-screen"><div className="spinner"></div></div>;
 }
- 
+
 // ── AUTH SCREEN ─────────────────────────────────────────────────
 function AuthScreen({ onLogin }) {
   const [mode,     setMode]    = useState('login');
@@ -369,7 +369,7 @@ function AuthScreen({ onLogin }) {
   const [err,      setErr]     = useState('');
   const [busy,     setBusy]    = useState(false);
   const [showPass, setShowPass]= useState(false);
- 
+
   const handle = async () => {
     if (!email || !pass) { setErr('Compila tutti i campi'); return; }
     setBusy(true); setErr('');
@@ -393,7 +393,7 @@ function AuthScreen({ onLogin }) {
     }
     setBusy(false);
   };
- 
+
   return (
     <div className="screen" style={{justifyContent:'center', padding:'0 32px', paddingTop:'env(safe-area-inset-top)'}}>
       <div style={{marginBottom:36, textAlign:'center'}}>
@@ -401,7 +401,7 @@ function AuthScreen({ onLogin }) {
         <h1 style={{fontSize:28,fontWeight:700,color:'var(--ink)',letterSpacing:-0.5,lineHeight:1.1}}>Hair Studios</h1>
         <p style={{fontSize:13,color:'var(--ink3)',marginTop:6}}>Barber Shop</p>
       </div>
- 
+
       <div style={{display:'flex',background:'var(--bg2)',borderRadius:10,padding:4,width:'100%',marginBottom:24}}>
         {['login','register'].map(m => (
           <button key={m} onClick={() => {setMode(m);setErr('');}}
@@ -413,7 +413,7 @@ function AuthScreen({ onLogin }) {
           </button>
         ))}
       </div>
- 
+
       <div style={{display:'flex',flexDirection:'column',gap:14,width:'100%'}}>
         {mode==='register' && (
           <>
@@ -446,24 +446,24 @@ function AuthScreen({ onLogin }) {
         </div>
         {err && <p style={{fontSize:12,color:'oklch(45% 0.18 25)',fontWeight:500}}>{err}</p>}
       </div>
- 
+
       <button className="btn-primary" style={{marginTop:24,opacity:busy?0.6:1}} disabled={busy} onClick={handle}>
         {busy ? 'Attendere...' : mode==='login' ? 'Accedi' : 'Crea Account'}
       </button>
     </div>
   );
 }
- 
+
 // ── USER HOME ───────────────────────────────────────────────────
 function UserHome({ user, profile, bookings, setTab, staff, services }) {
   const myBookings = bookings.filter(b => b.userId===profile.id||b.user_id===profile.id)
     .sort((a,b) => new Date(a.date+' '+a.time) - new Date(b.date+' '+b.time));
   const next = myBookings.find(b => b.status!=='cancelled' && new Date(b.date+' '+b.time) >= new Date());
   const staffMember = next ? staff.find(s => s.id===next.staff_id||s.id===next.staffId) : null;
- 
+
   const hour = new Date().getHours();
   const greeting = hour<12 ? 'Buongiorno' : hour<18 ? 'Buonasera' : 'Buonasera';
- 
+
   return (
     <div className="screen">
       <div className="scroll-content" style={{padding:'env(safe-area-inset-top, 16px) 24px 24px'}}>
@@ -480,7 +480,7 @@ function UserHome({ user, profile, bookings, setTab, staff, services }) {
             </div>
           </button>
         </div>
- 
+
         {next ? (
           <div className="card-dark" style={{marginBottom:20,position:'relative',overflow:'hidden'}}>
             <div style={{position:'absolute',right:-20,top:-20,width:120,height:120,borderRadius:'50%',background:'white',opacity:0.04}}></div>
@@ -512,16 +512,16 @@ function UserHome({ user, profile, bookings, setTab, staff, services }) {
             <p style={{fontSize:12,color:'var(--ink3)'}}>Prenota il tuo prossimo taglio</p>
           </div>
         )}
- 
+
         <button className="btn-gold" style={{marginBottom:20}} onClick={() => setTab('booking')}>
           + Nuova Prenotazione
         </button>
- 
+
       </div>
     </div>
   );
 }
- 
+
 // ── BOOKING FLOW ────────────────────────────────────────────────
 function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, setTab, schedules, dayBlocks }) {
   const [step, setStep]                   = useState(0);
@@ -535,18 +535,18 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
   const [busy, setBusy]                   = useState(false);
   const weekDates = getWeekDates(weekOffset);
   const totalDuration = selectedServices.reduce((a,s)=>a+s.duration,0);
- 
+
   const toggleService = (s) => {
     setSel(prev => prev.find(p=>p.id===s.id) ? prev.filter(p=>p.id!==s.id) : [...prev,s]);
     setTime(null); setDate(null);
   };
- 
+
   const ALL_SLOTS = [];
   for(let h=8;h<20;h++){
     ALL_SLOTS.push(`${String(h).padStart(2,'0')}:00`);
     ALL_SLOTS.push(`${String(h).padStart(2,'0')}:30`);
   }
- 
+
   const confirm = async () => {
     if (!selectedStaff||!date||!time||!selectedServices.length) return;
     setBusy(true);
@@ -568,7 +568,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
     onBooked();
     setTab('home');
   };
- 
+
   const steps = ['Servizi','Barbiere','Data & Ora','Conferma'];
   return (
     <div className="screen">
@@ -586,7 +586,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
           {steps.map((_,i)=><div key={i} className={`step-dot ${i===step?'active':i<step?'done':''}`}></div>)}
         </div>
       </div>
- 
+
       <div className="scroll-content" style={{padding:'0 24px 24px'}}>
         {/* STEP 0: Servizi */}
         {step===0 && (
@@ -626,7 +626,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
             <button className="btn-primary" style={{opacity:selectedServices.length?1:0.4}} disabled={!selectedServices.length} onClick={()=>setStep(1)}>Continua →</button>
           </>
         )}
- 
+
         {/* STEP 1: Barbiere */}
         {step===1 && (
           <>
@@ -650,7 +650,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
             <button className="btn-primary" style={{opacity:selectedStaff?1:0.4}} disabled={!selectedStaff} onClick={()=>setStep(2)}>Continua →</button>
           </>
         )}
- 
+
         {/* STEP 2: Data & Ora */}
         {step===2&&selectedStaff&&(
           <>
@@ -714,7 +714,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
             {date&&time&&<button className="btn-primary" onClick={()=>setStep(3)}>Continua →</button>}
           </>
         )}
- 
+
         {/* STEP 3: Conferma */}
         {step===3&&selectedServices.length>0&&selectedStaff&&date&&time&&(
           <div style={{paddingBottom:24}}>
@@ -751,26 +751,26 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
     </div>
   );
 }
- 
+
 // ── USER CALENDAR ───────────────────────────────────────────────
 function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState(null);
   const [showPicker, setShowPicker] = useState(false);
   const weekDates = getWeekDates(weekOffset);
- 
+
   const myBookings = bookings.filter(b => b.user_id===profile.id);
   const dayBookings = selectedDay!==null
     ? myBookings.filter(b=>b.date===toLocalDate(weekDates[selectedDay]))
     : myBookings;
- 
+
   const cancel = async (id) => {
     const { error } = await supabase.from('bookings').update({ status:'cancelled' }).eq('id',id);
     if (error) { setToast('Errore: '+error.message); return; }
     setToast('Prenotazione annullata');
     onRefresh();
   };
- 
+
   return (
     <div className="screen">
       <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
@@ -849,14 +849,14 @@ function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
     </div>
   );
 }
- 
+
 // ── USER PROFILE ────────────────────────────────────────────────
 function UserProfile({ profile, bookings, onLogout }) {
   const myBookings = bookings.filter(b=>b.user_id===profile.id);
   const confirmed  = myBookings.filter(b=>b.status==='confirmed').length;
- 
+
   const logout = async () => { await supabase.auth.signOut(); onLogout(); };
- 
+
   return (
     <div className="screen">
       <div className="scroll-content" style={{padding:'env(safe-area-inset-top,16px) 24px 24px',paddingTop:24}}>
@@ -867,7 +867,7 @@ function UserProfile({ profile, bookings, onLogout }) {
           <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>{profile.name}</h2>
           <p style={{fontSize:13,color:'var(--ink3)',marginTop:4}}>{profile.email||''}</p>
         </div>
- 
+
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:24}}>
           {[['Prenotazioni',myBookings.length],['Confermate',confirmed]].map(([l,v])=>(
             <div key={l} style={{background:'var(--bg2)',borderRadius:'var(--radius-sm)',padding:16,textAlign:'center',border:'1px solid var(--border)'}}>
@@ -876,7 +876,7 @@ function UserProfile({ profile, bookings, onLogout }) {
             </div>
           ))}
         </div>
- 
+
         <div className="card" style={{marginBottom:16}}>
           <p style={{fontSize:12,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5,marginBottom:14}}>Informazioni Personali</p>
           {[['Nome',profile.name],['Email',profile.email||'—'],['Telefono',profile.phone||'—']].map(([k,v])=>(
@@ -889,7 +889,7 @@ function UserProfile({ profile, bookings, onLogout }) {
             </div>
           ))}
         </div>
- 
+
         <div className="card" style={{marginBottom:20}}>
           <p style={{fontSize:12,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5,marginBottom:14}}>Storico Servizi</p>
           {myBookings.slice(0,5).map(b=>(
@@ -908,13 +908,13 @@ function UserProfile({ profile, bookings, onLogout }) {
           ))}
           {myBookings.length===0&&<p style={{fontSize:12,color:'var(--ink3)'}}>Nessuna prenotazione ancora</p>}
         </div>
- 
+
         <button className="btn-secondary" onClick={logout}>Esci dall'account</button>
       </div>
     </div>
   );
 }
- 
+
 // ── BOOKING ACTION MODAL (admin) ────────────────────────────────
 function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedules, dayBlocks }) {
   const [mode, setMode]         = useState('menu');
@@ -925,7 +925,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
   const [newStaff, setNewStaff] = useState(booking.staff_id);
   const [busy, setBusy]         = useState(false);
   const weekDates = getWeekDates(weekOffset);
- 
+
   const confirmReschedule = async () => {
     const dateStr=toLocalDate(weekDates[selectedDay]);
     if (!newTime) return;
@@ -935,23 +935,23 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
     if (error) return;
     onSave();
   };
- 
+
   const cancelBooking = async () => {
     setBusy(true);
     await supabase.from('bookings').update({ status:'cancelled' }).eq('id',booking.id);
     setBusy(false);
     onSave();
   };
- 
+
   const bookingStaff = staff.find(s=>s.id===booking.staff_id);
   const HOURS = [];
   for (let h=8;h<20;h++) { HOURS.push(`${String(h).padStart(2,'0')}:00`); HOURS.push(`${String(h).padStart(2,'0')}:30`); }
- 
+
   return (
     <div style={{position:'absolute',inset:0,zIndex:100,display:'flex',flexDirection:'column',justifyContent:'flex-end',background:'rgba(0,0,0,0.4)'}}>
       <div style={{background:'var(--bg)',borderRadius:'24px 24px 0 0',padding:'20px 24px 40px',maxHeight:'85%',display:'flex',flexDirection:'column'}}>
         <div style={{width:36,height:4,borderRadius:2,background:'var(--border)',margin:'0 auto 20px'}}></div>
- 
+
         {mode==='menu'&&(
           <>
             <div style={{background:'var(--bg2)',borderRadius:'var(--radius-sm)',padding:'14px 16px',marginBottom:20,border:'1px solid var(--border)'}}>
@@ -984,7 +984,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
             <button className="btn-secondary" style={{marginTop:16}} onClick={onClose}>Chiudi</button>
           </>
         )}
- 
+
         {mode==='reschedule'&&(
           <div style={{display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
             <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
@@ -1061,7 +1061,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
     </div>
   );
 }
- 
+
 // ── ADMIN MANUAL BOOKING ────────────────────────────────────────
 function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onClose, schedules, dayBlocks }) {
   const [step, setStep]           = useState(0);
@@ -1077,15 +1077,15 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
   const [busy, setBusy]           = useState(false);
   const weekDates = getWeekDates(weekOffset);
   const totalDuration = selectedServices.reduce((a,s)=>a+s.duration, 0);
- 
+
   const toggleService = (s) => {
     setSel(prev => prev.find(p=>p.id===s.id) ? prev.filter(p=>p.id!==s.id) : [...prev,s]);
     setTime(null); setDate(null);
   };
- 
+
   const SLOTS = [];
   for(let h=8;h<20;h++){ SLOTS.push(`${String(h).padStart(2,'0')}:00`); SLOTS.push(`${String(h).padStart(2,'0')}:30`); }
- 
+
   const confirm = async () => {
     if (!clientName.trim()||!selectedStaff||!date||!time||!selectedServices.length) return;
     setBusy(true);
@@ -1106,7 +1106,7 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
     onBooked();
     onClose();
   };
- 
+
   const steps = ['Cliente','Servizi','Barbiere','Data & Ora'];
   return (
     <div className="screen">
@@ -1121,9 +1121,9 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
           {steps.map((_,i)=><div key={i} className={`step-dot ${i===step?'active':i<step?'done':''}`}></div>)}
         </div>
       </div>
- 
+
       <div className="scroll-content" style={{padding:'0 24px 100px'}}>
- 
+
         {/* STEP 0: Cliente */}
         {step===0&&(
           <div style={{display:'flex',flexDirection:'column',gap:16}}>
@@ -1138,7 +1138,7 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
             <button className="btn-primary" style={{marginTop:8,opacity:clientName.trim()?1:0.4}} disabled={!clientName.trim()} onClick={()=>setStep(1)}>Continua →</button>
           </div>
         )}
- 
+
         {/* STEP 1: Servizi */}
         {step===1&&(
           <>
@@ -1166,7 +1166,7 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
             <button className="btn-primary" style={{opacity:selectedServices.length?1:0.4}} disabled={!selectedServices.length} onClick={()=>setStep(2)}>Continua →</button>
           </>
         )}
- 
+
         {/* STEP 2: Barbiere */}
         {step===2&&(
           <>
@@ -1189,7 +1189,7 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
             <button className="btn-primary" style={{opacity:selectedStaff?1:0.4}} disabled={!selectedStaff} onClick={()=>setStep(3)}>Continua →</button>
           </>
         )}
- 
+
         {/* STEP 3: Data & Ora */}
         {step===3&&selectedStaff&&(
           <>
@@ -1253,16 +1253,16 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
     </div>
   );
 }
- 
+
 // ── ADMIN DASHBOARD ─────────────────────────────────────────────
 function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, dayBlocks }) {
   const today = TODAY();
   const todayBks   = bookings.filter(b=>b.date===today&&b.status!=='cancelled');
   const pending    = bookings.filter(b=>b.status==='pending');
-  const confirmed  = bookings.filter(b=>b.status==='confirmed'&&b.date>=today).length;
+  const confirmed  = bookings.filter(b=>b.status==='confirmed').length;
   const [activeBooking, setActiveBooking] = useState(null);
   const [manualBooking, setManualBooking] = useState(false);
- 
+
   if (manualBooking) return (
     <AdminManualBooking
       staff={staff} services={services} bookings={bookings}
@@ -1271,7 +1271,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
       schedules={schedules} dayBlocks={dayBlocks}
     />
   );
- 
+
   const accept = async (id) => {
     await supabase.from('bookings').update({status:'confirmed'}).eq('id',id);
     setToast('✓ Prenotazione accettata'); onRefresh();
@@ -1280,10 +1280,10 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
     await supabase.from('bookings').update({status:'cancelled'}).eq('id',id);
     setToast('Prenotazione rifiutata'); onRefresh();
   };
- 
+
   return (
     <div className="screen" style={{position:'relative'}}>
-      <div className="scroll-content" style={{padding:'env(safe-area-inset-top,16px) 24px 0',paddingTop:16}}>
+      <div className="scroll-content" style={{padding:'env(safe-area-inset-top,16px) 24px 24px',paddingTop:16}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24}}>
           <div>
             <p style={{fontSize:12,color:'var(--ink3)',fontWeight:500}}>Dashboard</p>
@@ -1295,7 +1295,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
             <span style={{fontSize:16,lineHeight:1}}>+</span> Nuovo
           </button>
         </div>
- 
+
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:24}}>
           {[
             {label:'Oggi',      value:todayBks.length,  alert:false},
@@ -1308,7 +1308,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
             </div>
           ))}
         </div>
- 
+
         {pending.length>0&&(
           <>
             <div className="section-header">
@@ -1338,11 +1338,10 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
             <div className="divider"></div>
           </>
         )}
- 
+
         <div className="section-header">
           <span className="section-title">Oggi, {new Date().toLocaleDateString('it-IT',{day:'numeric',month:'long'})}</span>
         </div>
-        <div style={{overflowY:'auto',maxHeight:'50vh',borderRadius:'var(--radius-sm)'}}>
         {todayBks.length===0
           ? <p style={{fontSize:13,color:'var(--ink3)',textAlign:'center',padding:'20px 0'}}>Nessun appuntamento oggi</p>
           : todayBks.sort((a,b)=>(a.time||'00:00').localeCompare(b.time||'00:00')).map(b=>{
@@ -1361,7 +1360,6 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
             );
           })
         }
-        </div>
       </div>
       {activeBooking&&(
         <BookingActionModal booking={activeBooking} bookings={bookings} staff={staff}
@@ -1372,7 +1370,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
     </div>
   );
 }
- 
+
 // ── ADMIN CALENDAR ───────────────────────────────────────────────
 function AdminCalendar({ bookings, onRefresh, setToast, staff, schedules, dayBlocks }) {
   const [weekOffset, setWeekOffset] = useState(0);
@@ -1380,17 +1378,17 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, schedules, dayBlo
   const [showPicker, setShowPicker] = useState(false);
   const [activeBooking, setActiveBooking] = useState(null);
   const weekDates = getWeekDates(weekOffset);
- 
+
   const dateStr = toLocalDate(weekDates[selectedDay]);
   const dayBks  = bookings.filter(b=>b.date===dateStr&&b.status!=='cancelled');
   const DISPLAY_HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
   const CAL_START = 8;
- 
+
   const timeToY = (t) => {
     const [h,m]=(t||'08:00').slice(0,5).split(':').map(Number);
     return (h-CAL_START)*60+m;
   };
- 
+
   return (
     <div className="screen">
       <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
@@ -1432,7 +1430,7 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, schedules, dayBlo
           ))}
         </div>
       </div>
- 
+
       <div className="scroll-content" style={{padding:'0 16px 24px'}}>
         <div style={{position:'relative',marginTop:8}}>
           {DISPLAY_HOURS.map(h=>(
@@ -1479,7 +1477,7 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, schedules, dayBlo
     </div>
   );
 }
- 
+
 // ── WEEKLY CONFIG EDITOR ────────────────────────────────────────
 function WeeklyConfigEditor({ config, onChange }) {
   const WEEK = [
@@ -1538,7 +1536,7 @@ function WeeklyConfigEditor({ config, onChange }) {
     </div>
   );
 }
- 
+
 // ── ADMIN STAFF ──────────────────────────────────────────────────
 function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks, setToast, staff, setStaff, services, setServices }) {
   const [section, setSection]           = useState('staff');
@@ -1554,7 +1552,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
   const [addingBlock, setAddingBlock]   = useState(null);
   const [blockDraft, setBlockDraft]     = useState({date:'',start:'',end:''});
   const [busy, setBusy]                 = useState(false);
- 
+
   const buildInitials = (fullName) => {
     const parts = fullName.trim().split(' ').filter(Boolean);
     return parts.length>=2 ? (parts[0][0]+parts[parts.length-1][0]).toUpperCase() : fullName.slice(0,2).toUpperCase();
@@ -1563,7 +1561,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     const parts = fullName.trim().split(' ').filter(Boolean);
     return parts.length>=2 ? parts[0]+' '+parts[parts.length-1][0]+'.' : parts[0];
   };
- 
+
   const saveProfile = async () => {
     if (!draftProfile) return;
     setBusy(true);
@@ -1576,7 +1574,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     setStaff(prev=>prev.map(s=>s.id===editingProfile?{...s,...updated,initials,name}:s));
     setEditProfile(null); setDraftProfile(null); setToast('Profilo aggiornato');
   };
- 
+
   const saveNewStaff = async () => {
     if (!newDraft.fullName.trim()) return;
     setBusy(true);
@@ -1593,7 +1591,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     setAddingStaff(false);
     setNewDraft({fullName:'',role:'Barber',phone:'',email:'',color:'oklch(65% 0.14 240)'});
   };
- 
+
   const deleteStaff = async (id) => {
     if (!window.confirm('Eliminare questo dipendente? Le prenotazioni esistenti rimarranno nello storico.')) return;
     setBusy(true);
@@ -1606,7 +1604,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     setSelected(null);
     setToast('Dipendente eliminato');
   };
- 
+
   const saveSchedule = async () => {
     if (!draftSchedule) return;
     setBusy(true);
@@ -1618,7 +1616,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     setSchedules(prev=>({...prev,[editingSchedule]:draftSchedule}));
     setEditSched(null); setDraftSched(null); setToast('✓ Orario salvato');
   };
- 
+
   const saveBlock = async () => {
     if (!blockDraft.date||!blockDraft.start||!blockDraft.end) return;
     setBusy(true);
@@ -1632,13 +1630,13 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     setAddingBlock(null); setBlockDraft({date:'',start:'',end:''});
     setToast('✓ Pausa aggiunta');
   };
- 
+
   const deleteBlock = async (staffId, blockId) => {
     await supabase.from('staff_day_blocks').delete().eq('id', blockId);
     setDayBlocks(prev=>({...prev,[staffId]:(prev[staffId]||[]).filter(b=>b.id!==blockId)}));
     setToast('Pausa rimossa');
   };
- 
+
   const saveService = async () => {
     if (!draftService?.name?.trim()) return;
     setBusy(true);
@@ -1653,13 +1651,13 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     }
     setBusy(false); setEditSvc(null); setDraftService(null);
   };
- 
+
   const deleteService = async (id) => {
     await supabase.from('services').update({active:false}).eq('id',id);
     setServices(prev=>prev.filter(s=>s.id!==id));
     setToast('Servizio rimosso');
   };
- 
+
   // Schermate sub-navigazione
   if (addingStaff) return (
     <div className="screen">
@@ -1700,7 +1698,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
       </div>
     </div>
   );
- 
+
   if (editingProfile!==null&&draftProfile) {
     return (
       <div className="screen">
@@ -1749,7 +1747,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
       </div>
     );
   }
- 
+
   if (addingBlock!==null) {
     const s=staff.find(st=>st.id===addingBlock);
     return (
@@ -1782,7 +1780,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
       </div>
     );
   }
- 
+
   if (editingSchedule!==null&&draftSchedule) {
     const s=staff.find(st=>st.id===editingSchedule);
     const blocks=(dayBlocks[editingSchedule]||[]).filter(b=>b.date>=toLocalDate(new Date()));
@@ -1826,7 +1824,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
       </div>
     );
   }
- 
+
   if (editingService!==null&&draftService) return(
     <div className="screen">
       <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
@@ -1862,7 +1860,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
       </div>
     </div>
   );
- 
+
   return(
     <div className="screen">
       <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
@@ -1876,7 +1874,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
           ))}
         </div>
       </div>
- 
+
       <div className="scroll-content" style={{padding:'0 24px 24px'}}>
         {section==='staff'&&(
           <>
@@ -1922,7 +1920,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
             })}
           </>
         )}
- 
+
         {section==='services'&&(
           <>
             <button className="btn-secondary" style={{marginBottom:16}} onClick={()=>{setEditSvc('new');setDraftService({name:'',duration:30,price:''});}}>+ Aggiungi servizio</button>
@@ -1946,7 +1944,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     </div>
   );
 }
- 
+
 // ── ADMIN ACCOUNT ────────────────────────────────────────────────
 function AdminAccount({ profile, onLogout }) {
   const logout = async () => { await supabase.auth.signOut(); onLogout(); };
@@ -1977,13 +1975,13 @@ function AdminAccount({ profile, onLogout }) {
     </div>
   );
 }
- 
+
 // ── ADMIN HISTORY ────────────────────────────────────────────────
 function AdminHistory({ bookings, staff }) {
   const [filter, setFilter] = useState('all');
   const sorted   = [...bookings].sort((a,b)=>new Date(b.date+' '+b.time)-new Date(a.date+' '+a.time));
   const filtered = filter==='all' ? sorted : sorted.filter(b=>b.status===filter);
- 
+
   return(
     <div className="screen">
       <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
@@ -2020,7 +2018,7 @@ function AdminHistory({ bookings, staff }) {
     </div>
   );
 }
- 
+
 // ── ROOT APP ─────────────────────────────────────────────────────
 function App() {
   const [authUser, setAuthUser]   = useState(null);
@@ -2034,21 +2032,21 @@ function App() {
   const [schedules, setSchedules] = useState({});
   const [dayBlocks, setDayBlocks] = useState({});
   const [toast, setToast]         = useState(null);
- 
+
   // Controlla sessione all'avvio
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) loadProfile(session.user);
       else setLoading(false);
     });
- 
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) loadProfile(session.user);
       else { setAuthUser(null); setProfile(null); setLoading(false); }
     });
     return () => subscription.unsubscribe();
   }, []);
- 
+
   const loadProfile = async (user) => {
     setAuthUser(user);
     const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
@@ -2058,14 +2056,14 @@ function App() {
     }
     setLoading(false);
   };
- 
+
   useEffect(() => {
     if (profile) {
       setTab(profile.is_admin ? 'admin-dash' : 'home');
       loadAppData();
     }
   }, [profile?.id]);
- 
+
   const loadAppData = async () => {
     setDataLoad(true);
     try {
@@ -2079,7 +2077,7 @@ function App() {
         supabase.from('staff_schedules').select('*'),
         supabase.from('staff_day_blocks').select('*').gte('date', today).order('date'),
       ]);
- 
+
       if (staffRes.data) setStaff(staffRes.data);
       if (svcRes.data)   setServices(svcRes.data);
       if (bkRes.data)    setBookings(bkRes.data);
@@ -2103,21 +2101,21 @@ function App() {
     }
     setDataLoad(false);
   };
- 
+
   const handleLogin  = (user) => setAuthUser(user);
   const handleLogout = () => { setAuthUser(null); setProfile(null); setStaff([]); setServices([]); setBookings([]); };
- 
+
   if (loading) return <LoadingScreen />;
   if (!profile) return (
     <div style={{position:'relative',flex:1,display:'flex',flexDirection:'column'}}>
       <AuthScreen onLogin={handleLogin} />
     </div>
   );
- 
+
   if (dataLoading && !staff.length) return <LoadingScreen />;
- 
+
   const isAdmin = profile.is_admin;
- 
+
   const screens = isAdmin ? {
     'admin-dash':    <AdminDash    bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} services={services} schedules={schedules} dayBlocks={dayBlocks} />,
     'admin-cal':     <AdminCalendar bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} schedules={schedules} dayBlocks={dayBlocks} />,
@@ -2130,7 +2128,7 @@ function App() {
     'calendar': <UserCalendar profile={profile} bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} />,
     'profile':  <UserProfile  profile={profile} bookings={bookings} onLogout={handleLogout} />,
   };
- 
+
   return (
     <div style={{position:'relative',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       <div style={{flex:1,position:'relative',overflow:'hidden'}}>
@@ -2152,7 +2150,7 @@ function App() {
     </div>
   );
 }
- 
+
 function ConfigScreen() {
   return (
     <div style={{minHeight:'100dvh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,background:'var(--bg)',textAlign:'center'}}>
@@ -2177,11 +2175,10 @@ function ConfigScreen() {
     </div>
   );
 }
- 
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   CONFIG_READY ? <App /> : <ConfigScreen />
 );
 </script>
 </body>
 </html>
- 
