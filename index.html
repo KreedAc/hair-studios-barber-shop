@@ -533,6 +533,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
   const [selectedDay, setSelectedDay]     = useState(0);
   const [showPicker, setShowPicker]       = useState(false);
   const [busy, setBusy]                   = useState(false);
+  const [bookingNotes, setBookingNotes]   = useState('');
   const weekDates = getWeekDates(weekOffset);
   const totalDuration = selectedServices.reduce((a,s)=>a+s.duration,0);
 
@@ -560,6 +561,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
       client_name:      profile.name,
       date, time,
       status: 'pending',
+      notes: bookingNotes || null,
     });
     setBusy(false);
     if (error) { setToast('Errore: ' + error.message); return; }
@@ -741,6 +743,14 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
                 </div>
               ))}
             </div>
+            <textarea
+              value={bookingNotes} onChange={e=>setBookingNotes(e.target.value)}
+              placeholder="Note per il barbiere (facoltativo) — allergie, richieste speciali…"
+              rows={3}
+              style={{width:'100%',background:'var(--bg2)',border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',
+                padding:'12px 14px',fontSize:14,color:'var(--ink)',fontFamily:"'Jost',sans-serif",
+                resize:'none',outline:'none',marginBottom:16,lineHeight:1.5}}
+            />
             <p style={{fontSize:12,color:'var(--ink3)',textAlign:'center',marginBottom:20}}>La prenotazione sarà confermata dal barbiere entro 24h</p>
             <button className="btn-gold" style={{opacity:busy?0.6:1}} disabled={busy} onClick={confirm}>
               {busy?'Invio...':'Conferma Prenotazione'}
@@ -929,6 +939,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
   const [editDuration, setEditDuration]   = useState(booking.service_duration || 30);
   const [editStatus, setEditStatus]       = useState(booking.status || 'pending');
   const [editNotes, setEditNotes]         = useState(booking.notes || '');
+  const [editEarnings, setEditEarnings]   = useState(booking.earnings != null ? String(booking.earnings) : '');
   const weekDates = getWeekDates(weekOffset);
 
   const confirmReschedule = async () => {
@@ -955,7 +966,8 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
       service_name: editServiceName,
       service_duration: editDuration,
       status: editStatus,
-      notes: editNotes,
+      notes: editNotes || null,
+      earnings: editEarnings !== '' ? parseFloat(editEarnings) : null,
     }).eq('id', booking.id);
     setBusy(false);
     onSave();
@@ -1045,6 +1057,14 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
                   <option value="confirmed">Confermato</option>
                   <option value="cancelled">Annullato</option>
                 </select>
+              </div>
+              {/* Guadagno */}
+              <div>
+                <p style={{fontSize:11,fontWeight:600,color:'var(--ink3)',marginBottom:4,textTransform:'uppercase',letterSpacing:0.3}}>Guadagno (€)</p>
+                <input type="number" min="0" step="0.5" value={editEarnings} onChange={e=>setEditEarnings(e.target.value)}
+                  placeholder="0"
+                  style={{width:'100%',background:'var(--bg2)',border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',
+                    padding:'10px 12px',fontSize:14,color:'var(--ink)',outline:'none',fontFamily:"'Jost',sans-serif"}} />
               </div>
               {/* Note */}
               <div>
@@ -1543,8 +1563,13 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, services, schedul
                       position:'absolute',top,left:4,right:4,height:h,
                       background:b.status==='confirmed'?s.color:'var(--gold-bg)',
                       borderLeft:`3px solid ${b.status==='confirmed'?s.color:'var(--gold)'}`,
+                      border:`1px solid rgba(0,0,0,0.22)`,
+                      borderLeft:`3px solid ${b.status==='confirmed'?s.color:'var(--gold)'}`,
                       borderRadius:6,padding:'4px 6px',overflow:'hidden',cursor:'pointer',opacity:b.status==='confirmed'?1:0.8}}>
-                      <p style={{fontSize:10,fontWeight:700,color:b.status==='confirmed'?'white':'var(--ink)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>{b.client_name}</p>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:2}}>
+                        <p style={{fontSize:10,fontWeight:700,color:b.status==='confirmed'?'white':'var(--ink)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flex:1}}>{b.client_name}</p>
+                        {b.earnings!=null&&<span style={{fontSize:9,fontWeight:700,flexShrink:0,color:b.status==='confirmed'?'rgba(255,255,255,0.9)':'var(--ink2)',background:'rgba(0,0,0,0.15)',borderRadius:3,padding:'1px 3px',lineHeight:1.4}}>€{b.earnings}</span>}
+                      </div>
                     </div>
                   );
                 })}
