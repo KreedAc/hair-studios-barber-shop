@@ -924,6 +924,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
   const [newTime, setNewTime]   = useState(null);
   const [newStaff, setNewStaff] = useState(booking.staff_id);
   const [busy, setBusy]         = useState(false);
+  const [notes, setNotes]       = useState(booking.notes || '');
   const weekDates = getWeekDates(weekOffset);
 
   const confirmReschedule = async () => {
@@ -943,6 +944,13 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
     onSave();
   };
 
+  const saveNotes = async () => {
+    setBusy(true);
+    await supabase.from('bookings').update({ notes }).eq('id', booking.id);
+    setBusy(false);
+    onSave();
+  };
+
   const bookingStaff = staff.find(s=>s.id===booking.staff_id);
   const HOURS = [];
   for (let h=8;h<20;h++) { HOURS.push(`${String(h).padStart(2,'0')}:00`); HOURS.push(`${String(h).padStart(2,'0')}:30`); }
@@ -955,10 +963,14 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
         {mode==='menu'&&(
           <>
             <div style={{background:'var(--bg2)',borderRadius:'var(--radius-sm)',padding:'14px 16px',marginBottom:20,border:'1px solid var(--border)'}}>
-              <p style={{fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)',marginBottom:2}}>{booking.client_name}</p>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                <p style={{fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)',marginBottom:2}}>{booking.client_name}</p>
+                <button onClick={()=>setMode('edit')} style={{background:'none',border:'none',cursor:'pointer',fontSize:16,padding:'0 0 0 8px',color:'var(--ink3)',lineHeight:1}} title="Modifica note">✏️</button>
+              </div>
               {booking.profiles?.phone&&<p style={{fontSize:12,color:'var(--ink2)',fontWeight:600,marginBottom:4}}>{booking.profiles.phone}</p>}
               <p style={{fontSize:12,color:'var(--ink3)'}}>{booking.service_name} · {booking.time?.slice(0,5)} · {new Date(booking.date).toLocaleDateString('it-IT',{day:'numeric',month:'long'})}</p>
               {bookingStaff&&<p style={{fontSize:12,color:'var(--ink3)',marginTop:2}}>con {bookingStaff.name}</p>}
+              {booking.notes&&<p style={{fontSize:12,color:'var(--ink2)',marginTop:6,fontStyle:'italic'}}>📝 {booking.notes}</p>}
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
               <button onClick={()=>setMode('reschedule')}
@@ -982,6 +994,30 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
               </button>
             </div>
             <button className="btn-secondary" style={{marginTop:16}} onClick={onClose}>Chiudi</button>
+          </>
+        )}
+
+        {mode==='edit'&&(
+          <>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
+              <button className="btn-icon" onClick={()=>setMode('menu')}>←</button>
+              <h3 style={{fontSize:17,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>Note appuntamento</h3>
+            </div>
+            <p style={{fontSize:12,color:'var(--ink3)',marginBottom:6}}>{booking.client_name} · {booking.service_name} · {booking.time?.slice(0,5)}</p>
+            <textarea
+              value={notes}
+              onChange={e=>setNotes(e.target.value)}
+              placeholder="Aggiungi una nota (es. allergie, preferenze, richieste speciali…)"
+              rows={5}
+              style={{width:'100%',background:'var(--bg2)',border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',
+                padding:'12px 14px',fontSize:14,color:'var(--ink)',fontFamily:"'Jost',sans-serif",
+                resize:'none',outline:'none',marginBottom:16,lineHeight:1.5}}
+            />
+            <button onClick={saveNotes} disabled={busy}
+              style={{width:'100%',padding:14,borderRadius:'var(--radius-sm)',background:'var(--ink)',color:'white',
+                fontSize:14,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",border:'none'}}>
+              {busy ? 'Salvataggio…' : '✓ Salva nota'}
+            </button>
           </>
         )}
 
@@ -1454,10 +1490,10 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, schedules, dayBlo
               <div key={s.id} style={{position:'relative',borderLeft:si===1?'1px solid var(--border)':'none'}}>
                 {dayBks.filter(b=>b.staff_id===s.id).map(b=>{
                   const top=timeToY(b.time)*(72/60);
-                  const h=b.service_duration*(72/60);
+                  const h=Math.ceil((b.service_duration||30)/30)*30*(72/60);
                   return(
                     <div key={b.id} onClick={()=>setActiveBooking(b)} style={{
-                      position:'absolute',top,left:4,right:4,height:Math.max(h,20),
+                      position:'absolute',top,left:4,right:4,height:h,
                       background:b.status==='confirmed'?s.color:'var(--gold-bg)',
                       borderLeft:`3px solid ${b.status==='confirmed'?s.color:'var(--gold)'}`,
                       borderRadius:6,padding:'4px 6px',overflow:'hidden',cursor:'pointer',opacity:b.status==='confirmed'?1:0.8}}>
@@ -2064,6 +2100,17 @@ function App() {
       setTab(profile.is_admin ? 'admin-dash' : 'home');
       loadAppData();
     }
+  }, [profile?.id]);
+
+  useEffect(() => {
+    if (!profile?.is_admin) return;
+    const channel = supabase
+      .channel('bookings-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+        loadAppData();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [profile?.id]);
 
   const loadAppData = async () => {
