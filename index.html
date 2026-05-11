@@ -1527,12 +1527,21 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, services, schedul
         </div>
         <div style={{display:'grid',gridTemplateColumns:'48px 1fr 1fr',gap:0,borderBottom:'1px solid var(--border)',paddingBottom:8}}>
           <div></div>
-          {staff.map(s=>(
-            <div key={s.id} style={{textAlign:'center'}}>
-              <div className="avatar" style={{width:28,height:28,fontSize:10,background:s.color,color:'white',margin:'0 auto 2px',fontWeight:700}}>{s.initials}</div>
-              <p style={{fontSize:10,fontWeight:600,color:'var(--ink)',letterSpacing:0.2}}>{s.name}</p>
-            </div>
-          ))}
+          {staff.map(s=>{
+            const dayEarnings = dayBks
+              .filter(b=>b.staff_id===s.id&&b.earnings!=null)
+              .reduce((sum,b)=>sum+Number(b.earnings),0);
+            const net = +(dayEarnings*0.45).toFixed(2);
+            return (
+              <div key={s.id} style={{textAlign:'center'}}>
+                <div className="avatar" style={{width:28,height:28,fontSize:10,background:s.color,color:'white',margin:'0 auto 2px',fontWeight:700}}>{s.initials}</div>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
+                  <p style={{fontSize:10,fontWeight:600,color:'var(--ink)',letterSpacing:0.2}}>{s.name}</p>
+                  {dayEarnings>0&&<span style={{fontSize:9,fontWeight:700,color:'var(--ink2)',background:'rgba(0,0,0,0.08)',borderRadius:3,padding:'1px 3px',lineHeight:1.4}}>€{net}</span>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
