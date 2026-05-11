@@ -259,10 +259,10 @@ const offsetForMonthYear = (year, month) => {
   const todayDow = now.getDay();
   const todayMon = new Date(now);
   todayMon.setDate(now.getDate() - (todayDow === 0 ? 6 : todayDow - 1));
-  return Math.max(0, Math.round((monday - todayMon) / 604800000));
+  return Math.round((monday - todayMon) / 604800000);
 };
 
-function MonthYearPicker({ weekDates, setWeekOffset, onClose, onSelect }) {
+function MonthYearPicker({ weekDates, setWeekOffset, onClose, onSelect, allowPast }) {
   const curYear  = weekDates[0].getFullYear();
   const curMonth = weekDates[0].getMonth();
   const [pickerYear, setPickerYear] = React.useState(curYear);
@@ -280,13 +280,13 @@ function MonthYearPicker({ weekDates, setWeekOffset, onClose, onSelect }) {
         zIndex:50,background:'var(--bg)',border:'1px solid var(--border)',borderRadius:14,
         padding:14,boxShadow:'0 8px 32px rgba(0,0,0,0.15)',minWidth:220}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-          <button className="btn-icon" onClick={()=>setPickerYear(y=>Math.max(nowYear,y-1))} style={{opacity:pickerYear<=nowYear?0.3:1}} disabled={pickerYear<=nowYear}>←</button>
+          <button className="btn-icon" onClick={()=>setPickerYear(y=>allowPast?y-1:Math.max(nowYear,y-1))} style={{opacity:!allowPast&&pickerYear<=nowYear?0.3:1}} disabled={!allowPast&&pickerYear<=nowYear}>←</button>
           <span style={{fontWeight:700,fontSize:15,color:'var(--ink)'}}>{pickerYear}</span>
           <button className="btn-icon" onClick={()=>setPickerYear(y=>y+1)}>→</button>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6}}>
           {MONTHS.map((m,i) => {
-            const isPast = pickerYear===nowYear && i<nowMonth;
+            const isPast = !allowPast && pickerYear===nowYear && i<nowMonth;
             const isCur  = pickerYear===curYear  && i===curMonth;
             return (
               <button key={i} disabled={isPast} onClick={()=>select(i)}
@@ -1476,13 +1476,13 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, services, schedul
       <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
         <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',marginBottom:12,letterSpacing:-0.3}}>Calendario</h2>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-          <button className="btn-icon" onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} style={{opacity:weekOffset===0?0.3:1}}>‹</button>
+          <button className="btn-icon" onClick={()=>setWeekOffset(o=>o-1)}>‹</button>
           <div style={{position:'relative'}}>
             <button onClick={()=>setShowPicker(p=>!p)}
               style={{fontSize:13,fontWeight:600,color:'var(--ink)',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 12px',cursor:'pointer'}}>
               {MONTHS[weekDates[0].getMonth()]} {weekDates[0].getFullYear()} ▾
             </button>
-            {showPicker && <MonthYearPicker weekDates={weekDates} setWeekOffset={setWeekOffset} onClose={()=>setShowPicker(false)} />}
+            {showPicker && <MonthYearPicker allowPast weekDates={weekDates} setWeekOffset={setWeekOffset} onClose={()=>setShowPicker(false)} />}
           </div>
           <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>›</button>
         </div>
