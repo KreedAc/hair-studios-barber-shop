@@ -916,7 +916,7 @@ function UserProfile({ profile, bookings, onLogout }) {
 }
 
 // ── BOOKING ACTION MODAL (admin) ────────────────────────────────
-function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedules, dayBlocks }) {
+function BookingActionModal({ booking, bookings, onSave, onClose, staff, services, schedules, dayBlocks }) {
   const [mode, setMode]         = useState('menu');
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState(0);
@@ -924,7 +924,11 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
   const [newTime, setNewTime]   = useState(null);
   const [newStaff, setNewStaff] = useState(booking.staff_id);
   const [busy, setBusy]         = useState(false);
-  const [notes, setNotes]       = useState(booking.notes || '');
+  const [editName, setEditName]           = useState(booking.client_name || '');
+  const [editServiceName, setEditServiceName] = useState(booking.service_name || '');
+  const [editDuration, setEditDuration]   = useState(booking.service_duration || 30);
+  const [editStatus, setEditStatus]       = useState(booking.status || 'pending');
+  const [editNotes, setEditNotes]         = useState(booking.notes || '');
   const weekDates = getWeekDates(weekOffset);
 
   const confirmReschedule = async () => {
@@ -944,9 +948,15 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
     onSave();
   };
 
-  const saveNotes = async () => {
+  const saveEdit = async () => {
     setBusy(true);
-    await supabase.from('bookings').update({ notes }).eq('id', booking.id);
+    await supabase.from('bookings').update({
+      client_name: editName,
+      service_name: editServiceName,
+      service_duration: editDuration,
+      status: editStatus,
+      notes: editNotes,
+    }).eq('id', booking.id);
     setBusy(false);
     onSave();
   };
@@ -970,7 +980,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
               {booking.profiles?.phone&&<p style={{fontSize:12,color:'var(--ink2)',fontWeight:600,marginBottom:4}}>{booking.profiles.phone}</p>}
               <p style={{fontSize:12,color:'var(--ink3)'}}>{booking.service_name} · {booking.time?.slice(0,5)} · {new Date(booking.date).toLocaleDateString('it-IT',{day:'numeric',month:'long'})}</p>
               {bookingStaff&&<p style={{fontSize:12,color:'var(--ink3)',marginTop:2}}>con {bookingStaff.name}</p>}
-              {booking.notes&&<p style={{fontSize:12,color:'var(--ink2)',marginTop:6,fontStyle:'italic'}}>📝 {booking.notes}</p>}
+              {(booking.notes||editNotes)&&<p style={{fontSize:12,color:'var(--ink2)',marginTop:6,fontStyle:'italic'}}>📝 {editNotes||booking.notes}</p>}
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
               <button onClick={()=>setMode('reschedule')}
@@ -998,27 +1008,61 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, schedul
         )}
 
         {mode==='edit'&&(
-          <>
-            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
+          <div style={{display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16,flexShrink:0}}>
               <button className="btn-icon" onClick={()=>setMode('menu')}>←</button>
-              <h3 style={{fontSize:17,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>Note appuntamento</h3>
+              <h3 style={{fontSize:17,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>Modifica appuntamento</h3>
             </div>
-            <p style={{fontSize:12,color:'var(--ink3)',marginBottom:6}}>{booking.client_name} · {booking.service_name} · {booking.time?.slice(0,5)}</p>
-            <textarea
-              value={notes}
-              onChange={e=>setNotes(e.target.value)}
-              placeholder="Aggiungi una nota (es. allergie, preferenze, richieste speciali…)"
-              rows={5}
-              style={{width:'100%',background:'var(--bg2)',border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',
-                padding:'12px 14px',fontSize:14,color:'var(--ink)',fontFamily:"'Jost',sans-serif",
-                resize:'none',outline:'none',marginBottom:16,lineHeight:1.5}}
-            />
-            <button onClick={saveNotes} disabled={busy}
-              style={{width:'100%',padding:14,borderRadius:'var(--radius-sm)',background:'var(--ink)',color:'white',
-                fontSize:14,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",border:'none'}}>
-              {busy ? 'Salvataggio…' : '✓ Salva nota'}
-            </button>
-          </>
+            <div style={{overflowY:'auto',flex:1,display:'flex',flexDirection:'column',gap:12}}>
+              {/* Nome cliente */}
+              <div>
+                <p style={{fontSize:11,fontWeight:600,color:'var(--ink3)',marginBottom:4,textTransform:'uppercase',letterSpacing:0.3}}>Nome cliente</p>
+                <input value={editName} onChange={e=>setEditName(e.target.value)}
+                  style={{width:'100%',background:'var(--bg2)',border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',
+                    padding:'10px 12px',fontSize:14,color:'var(--ink)',outline:'none',fontFamily:"'Jost',sans-serif"}} />
+              </div>
+              {/* Servizio */}
+              <div>
+                <p style={{fontSize:11,fontWeight:600,color:'var(--ink3)',marginBottom:4,textTransform:'uppercase',letterSpacing:0.3}}>Servizio</p>
+                <select value={editServiceName}
+                  onChange={e=>{
+                    const svc=(services||[]).find(s=>s.name===e.target.value);
+                    setEditServiceName(e.target.value);
+                    if(svc) setEditDuration(svc.duration);
+                  }}
+                  style={{width:'100%',background:'var(--bg2)',border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',
+                    padding:'10px 12px',fontSize:14,color:'var(--ink)',outline:'none',fontFamily:"'Jost',sans-serif"}}>
+                  {(services||[]).map(s=><option key={s.id} value={s.name}>{s.name} ({s.duration} min)</option>)}
+                </select>
+              </div>
+              {/* Stato */}
+              <div>
+                <p style={{fontSize:11,fontWeight:600,color:'var(--ink3)',marginBottom:4,textTransform:'uppercase',letterSpacing:0.3}}>Stato</p>
+                <select value={editStatus} onChange={e=>setEditStatus(e.target.value)}
+                  style={{width:'100%',background:'var(--bg2)',border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',
+                    padding:'10px 12px',fontSize:14,color:'var(--ink)',outline:'none',fontFamily:"'Jost',sans-serif"}}>
+                  <option value="pending">In attesa</option>
+                  <option value="confirmed">Confermato</option>
+                  <option value="cancelled">Annullato</option>
+                </select>
+              </div>
+              {/* Note */}
+              <div>
+                <p style={{fontSize:11,fontWeight:600,color:'var(--ink3)',marginBottom:4,textTransform:'uppercase',letterSpacing:0.3}}>Note interne</p>
+                <textarea value={editNotes} onChange={e=>setEditNotes(e.target.value)}
+                  placeholder="Allergie, preferenze, richieste speciali…"
+                  rows={3}
+                  style={{width:'100%',background:'var(--bg2)',border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',
+                    padding:'10px 12px',fontSize:14,color:'var(--ink)',fontFamily:"'Jost',sans-serif",
+                    resize:'none',outline:'none',lineHeight:1.5}} />
+              </div>
+              <button onClick={saveEdit} disabled={busy}
+                style={{width:'100%',padding:14,borderRadius:'var(--radius-sm)',background:'var(--ink)',color:'white',
+                  fontSize:14,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",border:'none',marginBottom:8}}>
+                {busy ? 'Salvataggio…' : '✓ Salva modifiche'}
+              </button>
+            </div>
+          </div>
         )}
 
         {mode==='reschedule'&&(
@@ -1400,7 +1444,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
         </div>
       </div>
       {activeBooking&&(
-        <BookingActionModal booking={activeBooking} bookings={bookings} staff={staff}
+        <BookingActionModal booking={activeBooking} bookings={bookings} staff={staff} services={services}
           schedules={schedules} dayBlocks={dayBlocks}
           onSave={()=>{setActiveBooking(null);setToast('✓ Salvato');onRefresh();}}
           onClose={()=>setActiveBooking(null)} />
@@ -1410,7 +1454,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
 }
 
 // ── ADMIN CALENDAR ───────────────────────────────────────────────
-function AdminCalendar({ bookings, onRefresh, setToast, staff, schedules, dayBlocks }) {
+function AdminCalendar({ bookings, onRefresh, setToast, staff, services, schedules, dayBlocks }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
@@ -1507,7 +1551,7 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, schedules, dayBlo
         </div>
       </div>
       {activeBooking&&(
-        <BookingActionModal booking={activeBooking} bookings={bookings} staff={staff}
+        <BookingActionModal booking={activeBooking} bookings={bookings} staff={staff} services={services}
           schedules={schedules} dayBlocks={dayBlocks}
           onSave={()=>{setActiveBooking(null);setToast('✓ Salvato');onRefresh();}}
           onClose={()=>setActiveBooking(null)} />
@@ -2167,7 +2211,7 @@ function App() {
 
   const screens = isAdmin ? {
     'admin-dash':    <AdminDash    bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} services={services} schedules={schedules} dayBlocks={dayBlocks} />,
-    'admin-cal':     <AdminCalendar bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} schedules={schedules} dayBlocks={dayBlocks} />,
+    'admin-cal':     <AdminCalendar bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} services={services} schedules={schedules} dayBlocks={dayBlocks} />,
     'admin-staff':   <AdminStaff   bookings={bookings} schedules={schedules} setSchedules={setSchedules} dayBlocks={dayBlocks} setDayBlocks={setDayBlocks} setToast={setToast} staff={staff} setStaff={setStaff} services={services} setServices={setServices} />,
     'admin-history': <AdminHistory bookings={bookings} staff={staff} />,
     'admin-account': <AdminAccount profile={profile} onLogout={handleLogout} />,
