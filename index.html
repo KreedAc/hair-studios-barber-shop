@@ -1335,11 +1335,14 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
 }
 
 // ── ADMIN DASHBOARD ─────────────────────────────────────────────
-function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, dayBlocks }) {
-  const today = TODAY();
-  const todayBks   = bookings.filter(b=>b.date===today&&b.status!=='cancelled');
-  const pending    = bookings.filter(b=>b.status==='pending');
-  const confirmed  = bookings.filter(b=>b.status==='confirmed'&&b.date>=today).length;
+function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, dayBlocks, profile }) {
+  const today    = TODAY();
+  const myStaff  = profile?.staff_id || null;  // null = super admin, valorizzato = subadmin
+  const myBks    = myStaff ? bookings.filter(b=>b.staff_id===myStaff) : bookings;
+  const todayBks = myBks.filter(b=>b.date===today&&b.status!=='cancelled');
+  const pending  = myBks.filter(b=>b.status==='pending');
+  const confirmed= myBks.filter(b=>b.status==='confirmed'&&b.date>=today).length;
+  const myStaffObj = myStaff ? staff.find(s=>s.id===myStaff) : null;
   const [activeBooking, setActiveBooking] = useState(null);
   const [manualBooking, setManualBooking] = useState(false);
 
@@ -1367,7 +1370,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24}}>
           <div>
             <p style={{fontSize:12,color:'var(--ink3)',fontWeight:500}}>Dashboard</p>
-            <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>Gestione Salone</h2>
+            <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>{myStaffObj ? `Ciao, ${myStaffObj.name.split(' ')[0]}` : 'Gestione Salone'}</h2>
           </div>
           <button onClick={()=>setManualBooking(true)}
             style={{display:'flex',alignItems:'center',gap:6,padding:'10px 16px',borderRadius:'var(--radius-sm)',
@@ -2210,7 +2213,7 @@ function App() {
   const isAdmin = profile.is_admin;
 
   const screens = isAdmin ? {
-    'admin-dash':    <AdminDash    bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} services={services} schedules={schedules} dayBlocks={dayBlocks} />,
+    'admin-dash':    <AdminDash    bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} services={services} schedules={schedules} dayBlocks={dayBlocks} profile={profile} />,
     'admin-cal':     <AdminCalendar bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} services={services} schedules={schedules} dayBlocks={dayBlocks} />,
     'admin-staff':   <AdminStaff   bookings={bookings} schedules={schedules} setSchedules={setSchedules} dayBlocks={dayBlocks} setDayBlocks={setDayBlocks} setToast={setToast} staff={staff} setStaff={setStaff} services={services} setServices={setServices} />,
     'admin-history': <AdminHistory bookings={bookings} staff={staff} />,
