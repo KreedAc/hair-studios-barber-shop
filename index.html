@@ -2098,13 +2098,27 @@ function AdminAccount({ profile, onLogout }) {
 // ── ADMIN HISTORY ────────────────────────────────────────────────
 function AdminHistory({ bookings, staff }) {
   const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
   const sorted   = [...bookings].sort((a,b)=>new Date(b.date+' '+b.time)-new Date(a.date+' '+a.time));
-  const filtered = filter==='all' ? sorted : sorted.filter(b=>b.status===filter);
+  const filtered = sorted
+    .filter(b => filter==='all' || b.status===filter)
+    .filter(b => !search.trim() || (b.client_name||'').toLowerCase().includes(search.trim().toLowerCase()));
 
   return(
     <div className="screen">
       <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
-        <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',marginBottom:16,letterSpacing:-0.3}}>Storico prenotazioni</h2>
+        <h2 style={{fontSize:22,fontWeight:700,color:'var(--ink)',marginBottom:12,letterSpacing:-0.3}}>Storico prenotazioni</h2>
+        {/* Barra di ricerca */}
+        <div style={{position:'relative',marginBottom:12}}>
+          <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',fontSize:15,color:'var(--ink3)',pointerEvents:'none'}}>🔍</span>
+          <input
+            type="text" value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Cerca per nome…"
+            style={{width:'100%',background:'var(--bg2)',border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',
+              padding:'10px 12px 10px 36px',fontSize:14,color:'var(--ink)',outline:'none',fontFamily:"'Jost',sans-serif"}}
+          />
+          {search&&<button onClick={()=>setSearch('')} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:16,color:'var(--ink3)',lineHeight:1}}>✕</button>}
+        </div>
         <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingBottom:2}}>
           {[{id:'all',label:'Tutte'},{id:'confirmed',label:'Confermate'},{id:'pending',label:'In attesa'},{id:'cancelled',label:'Annullate'}].map(f=>(
             <button key={f.id} onClick={()=>setFilter(f.id)} className={`chip ${filter===f.id?'selected':''}`}>{f.label}</button>
