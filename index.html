@@ -2097,12 +2097,22 @@ function AdminAccount({ profile, onLogout }) {
 
 // ── ADMIN HISTORY ────────────────────────────────────────────────
 function AdminHistory({ bookings, staff }) {
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('upcoming');
   const [search, setSearch] = useState('');
-  const sorted   = [...bookings].sort((a,b)=>new Date(b.date+' '+b.time)-new Date(a.date+' '+a.time));
-  const filtered = sorted
-    .filter(b => filter==='all' || b.status===filter)
-    .filter(b => !search.trim() || (b.client_name||'').toLowerCase().includes(search.trim().toLowerCase()));
+  const today = TODAY();
+  const filtered = [...bookings]
+    .filter(b => {
+      if (filter==='upcoming') return b.status==='confirmed' && b.date>=today;
+      if (filter==='all')      return true;
+      return b.status===filter;
+    })
+    .filter(b => !search.trim() || (b.client_name||'').toLowerCase().includes(search.trim().toLowerCase()))
+    .sort((a,b) => {
+      const asc = filter==='upcoming';
+      return asc
+        ? new Date(a.date+' '+a.time) - new Date(b.date+' '+b.time)
+        : new Date(b.date+' '+b.time) - new Date(a.date+' '+a.time);
+    });
 
   return(
     <div className="screen">
@@ -2120,7 +2130,7 @@ function AdminHistory({ bookings, staff }) {
           {search&&<button onClick={()=>setSearch('')} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:16,color:'var(--ink3)',lineHeight:1}}>✕</button>}
         </div>
         <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingBottom:2}}>
-          {[{id:'all',label:'Tutte'},{id:'confirmed',label:'Confermate'},{id:'pending',label:'In attesa'},{id:'cancelled',label:'Annullate'}].map(f=>(
+          {[{id:'upcoming',label:'Prossime'},{id:'all',label:'Tutte'},{id:'confirmed',label:'Confermate'},{id:'pending',label:'In attesa'},{id:'cancelled',label:'Annullate'}].map(f=>(
             <button key={f.id} onClick={()=>setFilter(f.id)} className={`chip ${filter===f.id?'selected':''}`}>{f.label}</button>
           ))}
         </div>
