@@ -2162,6 +2162,35 @@ function AdminHistory({ bookings, staff }) {
   );
 }
 
+// ── INSTALL BANNER ──────────────────────────────────────────────
+function InstallBanner({ type, onInstall, onDismiss }) {
+  return (
+    <div style={{position:'fixed',bottom:80,left:16,right:16,zIndex:200,
+      background:'var(--ink)',borderRadius:16,padding:'14px 16px',
+      boxShadow:'0 8px 32px rgba(0,0,0,0.35)',display:'flex',alignItems:'center',gap:12,
+      animation:'slideUp 0.3s ease'}}>
+      <img src="/logo.png" alt="" style={{width:40,height:40,borderRadius:10,flexShrink:0,objectFit:'contain',background:'white',padding:2}} />
+      <div style={{flex:1,minWidth:0}}>
+        <p style={{fontSize:13,fontWeight:700,color:'white',marginBottom:2}}>Installa Hair Studios</p>
+        {type==='ios'
+          ? <p style={{fontSize:11,color:'rgba(255,255,255,0.6)',lineHeight:1.4}}>Tocca <strong style={{color:'white'}}>⎋ Condividi</strong> → <strong style={{color:'white'}}>"Aggiungi a schermata Home"</strong></p>
+          : <p style={{fontSize:11,color:'rgba(255,255,255,0.6)'}}>Aggiungi alla schermata Home per accesso rapido</p>
+        }
+      </div>
+      {type==='android'&&(
+        <button onClick={onInstall}
+          style={{background:'white',color:'var(--ink)',border:'none',borderRadius:8,
+            padding:'8px 14px',fontSize:12,fontWeight:700,flexShrink:0,cursor:'pointer'}}>
+          Installa
+        </button>
+      )}
+      <button onClick={onDismiss}
+        style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',
+          fontSize:18,cursor:'pointer',padding:'0 0 0 4px',flexShrink:0,lineHeight:1}}>✕</button>
+    </div>
+  );
+}
+
 // ── ROOT APP ─────────────────────────────────────────────────────
 function App() {
   const [authUser, setAuthUser]   = useState(null);
@@ -2175,6 +2204,47 @@ function App() {
   const [schedules, setSchedules] = useState({});
   const [dayBlocks, setDayBlocks] = useState({});
   const [toast, setToast]         = useState(null);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstall, setShowInstall]     = useState(null); // null | 'android' | 'ios'
+
+  // Gestione install banner PWA
+  useEffect(() => {
+    // Già installata come PWA → non mostrare
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return;
+    // Dismissione recente (7 giorni) → non mostrare
+    const dismissed = localStorage.getItem('installDismissed');
+    if (dismissed && Date.now() - parseInt(dismissed) < 7*24*60*60*1000) return;
+
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isSafari = /safari/i.test(navigator.userAgent) && !/crios|fxios|chrome/i.test(navigator.userAgent);
+
+    if (isIOS && isSafari) {
+      setTimeout(() => setShowInstall('ios'), 4000);
+      return;
+    }
+
+    // Android / Chrome desktop
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setTimeout(() => setShowInstall('android'), 4000);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    setShowInstall(null);
+    setInstallPrompt(null);
+  };
+
+  const handleDismissInstall = () => {
+    setShowInstall(null);
+    localStorage.setItem('installDismissed', String(Date.now()));
+  };
 
   // Controlla sessione all'avvio
   useEffect(() => {
@@ -2300,6 +2370,7 @@ function App() {
         ))}
       </div>
       <BottomNav tab={tab} setTab={setTab} isAdmin={isAdmin} onRefresh={loadAppData} />
+      {showInstall && <InstallBanner type={showInstall} onInstall={handleInstall} onDismiss={handleDismissInstall} />}
       {toast && <Toast message={toast} onDone={()=>setToast(null)} />}
     </div>
   );
