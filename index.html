@@ -989,7 +989,10 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
                 <p style={{fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)',marginBottom:2}}>{booking.client_name}</p>
                 <button onClick={()=>setMode('edit')} style={{background:'none',border:'none',cursor:'pointer',fontSize:16,padding:'0 0 0 8px',color:'var(--ink3)',lineHeight:1}} title="Modifica note">✏️</button>
               </div>
-              {booking.profiles?.phone&&<a href={`tel:${booking.profiles.phone.replace(/\s/g,'')}`} style={{fontSize:12,color:'var(--gold)',fontWeight:700,marginBottom:4,display:'inline-flex',alignItems:'center',gap:4,textDecoration:'none'}}>📞 {booking.profiles.phone}</a>}
+              {(booking.profiles?.phone||booking.client_phone)&&(()=>{
+                const tel=booking.profiles?.phone||booking.client_phone;
+                return <a href={`tel:${tel.replace(/\s/g,'')}`} style={{fontSize:12,color:'var(--gold)',fontWeight:700,marginBottom:4,display:'inline-flex',alignItems:'center',gap:4,textDecoration:'none'}}>📞 {tel}</a>;
+              })()}
               <p style={{fontSize:12,color:'var(--ink3)'}}>{booking.service_name} · {booking.time?.slice(0,5)} · {new Date(booking.date).toLocaleDateString('it-IT',{day:'numeric',month:'long'})}</p>
               {bookingStaff&&<p style={{fontSize:12,color:'var(--ink3)',marginTop:2}}>con {bookingStaff.name}</p>}
               {(booking.notes||editNotes)&&<p style={{fontSize:12,color:'var(--ink2)',marginTop:6,fontStyle:'italic'}}>📝 {editNotes||booking.notes}</p>}
@@ -1167,6 +1170,7 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
   const [step, setStep]           = useState(0);
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [clientNotes, setClientNotes] = useState('');
   const [selectedServices, setSel] = useState([]);
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [date, setDate]           = useState(null);
@@ -1196,7 +1200,8 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
       service_name:     selectedServices.map(s=>s.name).join(' + '),
       service_duration: totalDuration,
       client_name:      clientName.trim(),
-      notes:            clientPhone.trim()||null,
+      client_phone:     clientPhone.trim()||null,
+      notes:            clientNotes.trim()||null,
       date, time,
       status: 'confirmed',
     });
@@ -1234,6 +1239,12 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
             <div className="input-group">
               <label className="input-label">Telefono <span style={{color:'var(--ink3)',fontWeight:400}}>(opzionale)</span></label>
               <input className="input-field" type="tel" placeholder="+39 345 000 0000" value={clientPhone} onChange={e=>setClientPhone(e.target.value)} />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Note <span style={{color:'var(--ink3)',fontWeight:400}}>(opzionale)</span></label>
+              <textarea className="input-field" rows={3} placeholder="Allergie, preferenze, richieste speciali…"
+                value={clientNotes} onChange={e=>setClientNotes(e.target.value)}
+                style={{resize:'none',lineHeight:1.5,fontFamily:"'Jost',sans-serif"}} />
             </div>
             <button className="btn-primary" style={{marginTop:8,opacity:clientName.trim()?1:0.4}} disabled={!clientName.trim()} onClick={()=>setStep(1)}>Continua →</button>
           </div>
