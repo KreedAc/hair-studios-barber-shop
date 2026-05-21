@@ -989,7 +989,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
                 <p style={{fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)',marginBottom:2}}>{booking.client_name}</p>
                 <button onClick={()=>setMode('edit')} style={{background:'none',border:'none',cursor:'pointer',fontSize:16,padding:'0 0 0 8px',color:'var(--ink3)',lineHeight:1}} title="Modifica note">✏️</button>
               </div>
-              {booking.profiles?.phone&&<p style={{fontSize:12,color:'var(--ink2)',fontWeight:600,marginBottom:4}}>{booking.profiles.phone}</p>}
+              {booking.profiles?.phone&&<a href={`tel:${booking.profiles.phone.replace(/\s/g,'')}`} style={{fontSize:12,color:'var(--gold)',fontWeight:700,marginBottom:4,display:'inline-flex',alignItems:'center',gap:4,textDecoration:'none'}}>📞 {booking.profiles.phone}</a>}
               <p style={{fontSize:12,color:'var(--ink3)'}}>{booking.service_name} · {booking.time?.slice(0,5)} · {new Date(booking.date).toLocaleDateString('it-IT',{day:'numeric',month:'long'})}</p>
               {bookingStaff&&<p style={{fontSize:12,color:'var(--ink3)',marginTop:2}}>con {bookingStaff.name}</p>}
               {(booking.notes||editNotes)&&<p style={{fontSize:12,color:'var(--ink2)',marginTop:6,fontStyle:'italic'}}>📝 {editNotes||booking.notes}</p>}
