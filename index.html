@@ -206,12 +206,26 @@ const DEFAULT_WEEKLY_CONFIG = {
 };
 
 // Verifica se uno slot è disponibile rispettando orario settimanale, pause fisse e blocchi extra
-function checkSlot(date, time, staffId, duration, bookings, schedules, dayBlocks) {
+function checkSlot(date, time, staffId, duration, bookings, schedules, dayBlocks, dayOverrides) {
   if (!date || !time || !staffId || !duration) return false;
-  const dow = new Date(date + 'T12:00:00').getDay();
-  const cfg = (schedules[staffId]||{})[dow];
-  if (!cfg) return false;
   const t2m = t => { if (!t) return NaN; const [h,m]=(t+'').split(':').map(Number); return h*60+m; };
+
+  // 1. Se esiste un override per questa data, usalo (sovrascrive l'orario settimanale)
+  const override = (dayOverrides?.[staffId] || []).find(o => o.date === date);
+  let cfg;
+  if (override) {
+    if (!override.start_time || !override.end_time) return false; // giorno chiuso
+    cfg = {
+      start:  override.start_time.slice(0,5),
+      end:    override.end_time.slice(0,5),
+      breaks: (override.breaks||[]).map(b=>({start:(b.start||'').slice(0,5), end:(b.end||'').slice(0,5)})),
+    };
+  } else {
+    const dow = new Date(date + 'T12:00:00').getDay();
+    cfg = (schedules[staffId]||{})[dow];
+    if (!cfg) return false;
+  }
+
   const ss = t2m(time), se = ss + duration;
   if (isNaN(ss) || isNaN(se)) return false;
   if (ss < t2m(cfg.start) || se > t2m(cfg.end)) return false;
@@ -523,7 +537,7 @@ function UserHome({ user, profile, bookings, setTab, staff, services }) {
 }
 
 // ── BOOKING FLOW ────────────────────────────────────────────────
-function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, setTab, schedules, dayBlocks }) {
+function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, setTab, schedules, dayBlocks, dayOverrides }) {
   const [step, setStep]                   = useState(0);
   const [selectedServices, setSel]        = useState([]);
   const [selectedStaff, setSelectedStaff] = useState(null);
@@ -698,7 +712,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
                 const isToday=weekDates[selectedDay].toDateString()===now.toDateString();
                 const [hh,mm]=h.split(':').map(Number);
                 const isPastTime=isToday&&(hh*60+mm)<=(now.getHours()*60+now.getMinutes());
-                const avail=!isPastTime&&checkSlot(dStr,h,selectedStaff.id,totalDuration,bookings,schedules,dayBlocks);
+                const avail=!isPastTime&&checkSlot(dStr,h,selectedStaff.id,totalDuration,bookings,schedules,dayBlocks,dayOverrides);
                 const isSel=time===h&&date===dStr;
                 return (
                   <button key={h} disabled={!avail} onClick={()=>{setTime(h);setDate(dStr);}}
@@ -926,7 +940,7 @@ function UserProfile({ profile, bookings, onLogout }) {
 }
 
 // ── BOOKING ACTION MODAL (admin) ────────────────────────────────
-function BookingActionModal({ booking, bookings, onSave, onClose, staff, services, schedules, dayBlocks }) {
+function BookingActionModal({ booking, bookings, onSave, onClose, staff, services, schedules, dayBlocks, dayOverrides }) {
   const [mode, setMode]         = useState('menu');
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState(0);
@@ -1140,7 +1154,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
                 const isToday=weekDates[selectedDay].toDateString()===now.toDateString();
                 const [hh,mm]=h.split(':').map(Number);
                 const isPastTime=isToday&&(hh*60+mm)<=(now.getHours()*60+now.getMinutes());
-                const avail=!isPastTime&&checkSlot(dStr,h,newStaff,booking.service_duration,bookings.filter(b=>b.id!==booking.id),schedules,dayBlocks);
+                const avail=!isPastTime&&checkSlot(dStr,h,newStaff,booking.service_duration,bookings.filter(b=>b.id!==booking.id),schedules,dayBlocks,dayOverrides);
                 const disabled=!avail;
                 const sel=newTime===h;
                 return(
@@ -1166,7 +1180,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
 }
 
 // ── ADMIN MANUAL BOOKING ────────────────────────────────────────
-function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onClose, schedules, dayBlocks }) {
+function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onClose, schedules, dayBlocks, dayOverrides }) {
   const [step, setStep]           = useState(0);
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
@@ -1340,7 +1354,7 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:24}}>
               {SLOTS.map(h=>{
                 const dStr=toLocalDate(weekDates[selectedDay]);
-                const avail=checkSlot(dStr,h,selectedStaff.id,totalDuration,bookings,schedules,dayBlocks);
+                const avail=checkSlot(dStr,h,selectedStaff.id,totalDuration,bookings,schedules,dayBlocks,dayOverrides);
                 const isSel=time===h&&date===dStr;
                 return(
                   <button key={h} disabled={!avail} onClick={()=>{setTime(h);setDate(dStr);}}
@@ -1366,7 +1380,7 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
 }
 
 // ── ADMIN DASHBOARD ─────────────────────────────────────────────
-function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, dayBlocks, profile }) {
+function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, dayBlocks, dayOverrides, profile }) {
   const today    = TODAY();
   const myStaff  = profile?.staff_id || null;  // null = super admin, valorizzato = subadmin
   const myBks    = myStaff ? bookings.filter(b=>b.staff_id===myStaff) : bookings;
@@ -1382,7 +1396,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
       staff={staff} services={services} bookings={bookings}
       onBooked={onRefresh} setToast={setToast}
       onClose={()=>setManualBooking(false)}
-      schedules={schedules} dayBlocks={dayBlocks}
+      schedules={schedules} dayBlocks={dayBlocks} dayOverrides={dayOverrides}
     />
   );
 
@@ -1479,7 +1493,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
       </div>
       {activeBooking&&(
         <BookingActionModal booking={activeBooking} bookings={bookings} staff={staff} services={services}
-          schedules={schedules} dayBlocks={dayBlocks}
+          schedules={schedules} dayBlocks={dayBlocks} dayOverrides={dayOverrides}
           onSave={()=>{setActiveBooking(null);setToast('✓ Salvato');onRefresh();}}
           onClose={()=>setActiveBooking(null)} />
       )}
@@ -1488,7 +1502,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
 }
 
 // ── ADMIN CALENDAR ───────────────────────────────────────────────
-function AdminCalendar({ bookings, onRefresh, setToast, staff, services, schedules, dayBlocks }) {
+function AdminCalendar({ bookings, onRefresh, setToast, staff, services, schedules, dayBlocks, dayOverrides }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
@@ -1600,7 +1614,7 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, services, schedul
       </div>
       {activeBooking&&(
         <BookingActionModal booking={activeBooking} bookings={bookings} staff={staff} services={services}
-          schedules={schedules} dayBlocks={dayBlocks}
+          schedules={schedules} dayBlocks={dayBlocks} dayOverrides={dayOverrides}
           onSave={()=>{setActiveBooking(null);setToast('✓ Salvato');onRefresh();}}
           onClose={()=>setActiveBooking(null)} />
       )}
@@ -1668,19 +1682,22 @@ function WeeklyConfigEditor({ config, onChange }) {
 }
 
 // ── ADMIN STAFF ──────────────────────────────────────────────────
-function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks, setToast, staff, setStaff, services, setServices }) {
+function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks, dayOverrides, setDayOverrides, setToast, staff, setStaff, services, setServices }) {
   const [section, setSection]           = useState('staff');
   const [selected, setSelected]         = useState(null);
   const [editingProfile, setEditProfile]= useState(null);
   const [draftProfile, setDraftProfile] = useState(null);
   const [editingSchedule, setEditSched] = useState(null);
   const [draftSchedule, setDraftSched]  = useState(null);
+  const [scheduleSection, setScheduleSection] = useState('menu'); // menu | weekly | blocks | overrides
   const [addingStaff, setAddingStaff]   = useState(false);
   const [newDraft, setNewDraft]         = useState({fullName:'',role:'Barber',phone:'',email:'',color:'oklch(65% 0.14 240)'});
   const [editingService, setEditSvc]    = useState(null);
   const [draftService, setDraftService] = useState(null);
   const [addingBlock, setAddingBlock]   = useState(null);
   const [blockDraft, setBlockDraft]     = useState({date:'',start:'',end:''});
+  const [editingOverride, setEditingOverride] = useState(null); // null | 'new' | id
+  const [overrideDraft, setOverrideDraft]     = useState({date:'',start_time:'09:00',end_time:'19:00',breaks:[],closed:false});
   const [busy, setBusy]                 = useState(false);
 
   const buildInitials = (fullName) => {
@@ -1765,6 +1782,36 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     await supabase.from('staff_day_blocks').delete().eq('id', blockId);
     setDayBlocks(prev=>({...prev,[staffId]:(prev[staffId]||[]).filter(b=>b.id!==blockId)}));
     setToast('Pausa rimossa');
+  };
+
+  const saveOverride = async () => {
+    if (!overrideDraft.date) return;
+    setBusy(true);
+    const payload = {
+      staff_id:   editingSchedule,
+      date:       overrideDraft.date,
+      start_time: overrideDraft.closed ? null : overrideDraft.start_time,
+      end_time:   overrideDraft.closed ? null : overrideDraft.end_time,
+      breaks:     overrideDraft.closed ? [] : (overrideDraft.breaks||[]).filter(b=>b.start&&b.end),
+    };
+    const { data, error } = await supabase.from('staff_day_overrides')
+      .upsert(payload, { onConflict: 'staff_id,date' })
+      .select().single();
+    setBusy(false);
+    if (error) { setToast('Errore: '+error.message); return; }
+    setDayOverrides(prev => {
+      const list = (prev[editingSchedule]||[]).filter(o=>o.date!==overrideDraft.date);
+      return {...prev, [editingSchedule]: [...list, data].sort((a,b)=>a.date.localeCompare(b.date))};
+    });
+    setEditingOverride(null);
+    setOverrideDraft({date:'',start_time:'09:00',end_time:'19:00',breaks:[],closed:false});
+    setToast('✓ Orario salvato');
+  };
+
+  const deleteOverride = async (staffId, id) => {
+    await supabase.from('staff_day_overrides').delete().eq('id', id);
+    setDayOverrides(prev=>({...prev,[staffId]:(prev[staffId]||[]).filter(o=>o.id!==id)}));
+    setToast('Modifica rimossa');
   };
 
   const saveService = async () => {
@@ -1914,45 +1961,209 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
   if (editingSchedule!==null&&draftSchedule) {
     const s=staff.find(st=>st.id===editingSchedule);
     const blocks=(dayBlocks[editingSchedule]||[]).filter(b=>b.date>=toLocalDate(new Date()));
-    return(
+    const overrides=(dayOverrides[editingSchedule]||[]).filter(o=>o.date>=toLocalDate(new Date()));
+
+    // ── MENU PRINCIPALE 3 SEZIONI ──────────────────────────────
+    if (scheduleSection==='menu') return(
       <div className="screen">
         <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
           <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-            <button className="btn-icon" onClick={()=>{setEditSched(null);setDraftSched(null);}}>←</button>
+            <button className="btn-icon" onClick={()=>{setEditSched(null);setDraftSched(null);setScheduleSection('menu');}}>←</button>
             <div><p style={{fontSize:11,color:'var(--ink3)'}}>Orario di</p>
               <h2 style={{fontSize:20,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>{s?.name}</h2></div>
           </div>
         </div>
+        <div className="scroll-content" style={{padding:'20px 24px 32px',display:'flex',flexDirection:'column',gap:12}}>
+          <button onClick={()=>setScheduleSection('weekly')}
+            style={{display:'flex',alignItems:'center',gap:14,padding:'16px 18px',borderRadius:'var(--radius-sm)',background:'var(--bg2)',border:'1px solid var(--border)',textAlign:'left',width:'100%'}}>
+            <div style={{width:44,height:44,borderRadius:12,background:'var(--ink)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:20}}>🗓️</div>
+            <div style={{flex:1}}>
+              <p style={{fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>Modifica orari massiva</p>
+              <p style={{fontSize:11,color:'var(--ink3)',marginTop:2}}>Imposta gli orari standard di ogni giorno della settimana</p>
+            </div>
+            <span style={{color:'var(--ink3)',fontSize:18}}>›</span>
+          </button>
+          <button onClick={()=>setScheduleSection('blocks')}
+            style={{display:'flex',alignItems:'center',gap:14,padding:'16px 18px',borderRadius:'var(--radius-sm)',background:'var(--bg2)',border:'1px solid var(--border)',textAlign:'left',width:'100%'}}>
+            <div style={{width:44,height:44,borderRadius:12,background:'var(--gold)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:20}}>⏸️</div>
+            <div style={{flex:1}}>
+              <p style={{fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>Pause extra su data</p>
+              <p style={{fontSize:11,color:'var(--ink3)',marginTop:2}}>Permessi e pause su un giorno specifico ({blocks.length} attive)</p>
+            </div>
+            <span style={{color:'var(--ink3)',fontSize:18}}>›</span>
+          </button>
+          <button onClick={()=>setScheduleSection('overrides')}
+            style={{display:'flex',alignItems:'center',gap:14,padding:'16px 18px',borderRadius:'var(--radius-sm)',background:'var(--bg2)',border:'1px solid var(--border)',textAlign:'left',width:'100%'}}>
+            <div style={{width:44,height:44,borderRadius:12,background:'oklch(55% 0.15 240)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:20}}>📅</div>
+            <div style={{flex:1}}>
+              <p style={{fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>Modifiche orario su data</p>
+              <p style={{fontSize:11,color:'var(--ink3)',marginTop:2}}>Cambia completamente l'orario di un singolo giorno ({overrides.length} attive)</p>
+            </div>
+            <span style={{color:'var(--ink3)',fontSize:18}}>›</span>
+          </button>
+        </div>
+      </div>
+    );
+
+    // ── SEZIONE WEEKLY ─────────────────────────────────────────
+    if (scheduleSection==='weekly') return(
+      <div className="screen">
+        <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
+          <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+            <button className="btn-icon" onClick={()=>setScheduleSection('menu')}>←</button>
+            <div><p style={{fontSize:11,color:'var(--ink3)'}}>{s?.name}</p>
+              <h2 style={{fontSize:20,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>Modifica orari massiva</h2></div>
+          </div>
+        </div>
         <div className="scroll-content" style={{padding:'12px 24px 100px'}}>
           <WeeklyConfigEditor config={draftSchedule} onChange={setDraftSched} />
-          <div style={{marginTop:24}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-              <p style={{fontSize:12,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5}}>Pause extra su data</p>
-              <button onClick={()=>setAddingBlock(editingSchedule)}
-                style={{fontSize:12,fontWeight:600,color:'var(--gold)',padding:'5px 10px',borderRadius:7,border:'1px solid var(--gold-dim)',background:'var(--gold-bg)'}}>
-                + Aggiungi
+        </div>
+        <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'12px 24px 28px',background:'var(--bg)',borderTop:'1px solid var(--border)'}}>
+          <button className="btn-primary" style={{opacity:busy?0.6:1}} disabled={busy} onClick={async()=>{await saveSchedule();setScheduleSection('menu');}}>{busy?'Salvataggio...':'Salva orario'}</button>
+        </div>
+      </div>
+    );
+
+    // ── SEZIONE BLOCKS (Pause extra) ───────────────────────────
+    if (scheduleSection==='blocks') return(
+      <div className="screen">
+        <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
+          <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+            <button className="btn-icon" onClick={()=>setScheduleSection('menu')}>←</button>
+            <div><p style={{fontSize:11,color:'var(--ink3)'}}>{s?.name}</p>
+              <h2 style={{fontSize:20,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>Pause extra su data</h2></div>
+          </div>
+        </div>
+        <div className="scroll-content" style={{padding:'16px 24px 100px'}}>
+          <p style={{fontSize:12,color:'var(--ink3)',marginBottom:14,lineHeight:1.5}}>Inserisci permessi o pause temporanee su giorni specifici. L'orario settimanale resta invariato.</p>
+          <button onClick={()=>setAddingBlock(editingSchedule)}
+            style={{width:'100%',padding:'12px',marginBottom:16,borderRadius:'var(--radius-sm)',background:'var(--gold-bg)',border:'1.5px dashed var(--gold-dim)',color:'var(--gold)',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+            + Aggiungi pausa
+          </button>
+          {blocks.length===0&&<p style={{fontSize:12,color:'var(--ink3)',fontStyle:'italic',textAlign:'center',padding:'20px 0'}}>Nessuna pausa programmata</p>}
+          {blocks.map(b=>(
+            <div key={b.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:'var(--bg2)',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',marginBottom:8}}>
+              <div>
+                <p style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{new Date(b.date+'T12:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'long'})}</p>
+                <p style={{fontSize:12,color:'var(--ink3)'}}>{b.start_time.slice(0,5)} – {b.end_time.slice(0,5)}</p>
+              </div>
+              <button onClick={()=>deleteBlock(editingSchedule,b.id)}
+                style={{fontSize:11,color:'oklch(45% 0.18 25)',fontWeight:600,padding:'5px 10px',borderRadius:6,border:'1px solid oklch(90% 0.04 20)',background:'oklch(98% 0.02 20)',cursor:'pointer'}}>
+                Rimuovi
               </button>
             </div>
-            {blocks.length===0&&<p style={{fontSize:12,color:'var(--ink3)',fontStyle:'italic'}}>Nessuna pausa extra programmata</p>}
-            {blocks.map(b=>(
-              <div key={b.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',background:'var(--bg2)',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',marginBottom:8}}>
-                <div>
-                  <p style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{new Date(b.date+'T12:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'long'})}</p>
-                  <p style={{fontSize:12,color:'var(--ink3)'}}>{b.start_time.slice(0,5)} – {b.end_time.slice(0,5)}</p>
+          ))}
+        </div>
+      </div>
+    );
+
+    // ── SEZIONE OVERRIDES (Modifiche orario su data) ───────────
+    if (scheduleSection==='overrides') {
+      if (editingOverride!==null) return(
+        <div className="screen">
+          <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+              <button className="btn-icon" onClick={()=>{setEditingOverride(null);setOverrideDraft({date:'',start_time:'09:00',end_time:'19:00',breaks:[],closed:false});}}>←</button>
+              <h2 style={{fontSize:20,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>{editingOverride==='new'?'Nuova modifica':'Modifica orario'}</h2>
+            </div>
+          </div>
+          <div className="scroll-content" style={{padding:'16px 24px 100px'}}>
+            <div className="input-group">
+              <label className="input-label">Data</label>
+              <input type="date" className="input-field" value={overrideDraft.date} min={toLocalDate(new Date())}
+                disabled={editingOverride!=='new'}
+                onChange={e=>setOverrideDraft(p=>({...p,date:e.target.value}))} />
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:10,margin:'14px 0',padding:'10px 14px',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)'}}>
+              <input type="checkbox" id="ovrClosed" checked={overrideDraft.closed} onChange={e=>setOverrideDraft(p=>({...p,closed:e.target.checked}))} style={{width:18,height:18}} />
+              <label htmlFor="ovrClosed" style={{fontSize:14,fontWeight:600,color:'var(--ink)',cursor:'pointer'}}>Giorno chiuso</label>
+            </div>
+            {!overrideDraft.closed&&(<>
+              <div style={{display:'flex',gap:12,marginBottom:12}}>
+                <div className="input-group" style={{flex:1}}>
+                  <label className="input-label">Apertura</label>
+                  <input type="time" className="input-field" value={overrideDraft.start_time}
+                    onChange={e=>setOverrideDraft(p=>({...p,start_time:e.target.value}))} />
                 </div>
-                <button onClick={()=>deleteBlock(editingSchedule,b.id)}
-                  style={{fontSize:11,color:'oklch(45% 0.18 25)',fontWeight:600,padding:'5px 10px',borderRadius:6,border:'1px solid oklch(90% 0.04 20)',background:'oklch(98% 0.02 20)'}}>
-                  Rimuovi
-                </button>
+                <div className="input-group" style={{flex:1}}>
+                  <label className="input-label">Chiusura</label>
+                  <input type="time" className="input-field" value={overrideDraft.end_time}
+                    onChange={e=>setOverrideDraft(p=>({...p,end_time:e.target.value}))} />
+                </div>
+              </div>
+              <div style={{marginTop:8}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                  <p style={{fontSize:12,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5}}>Pause</p>
+                  <button onClick={()=>setOverrideDraft(p=>({...p,breaks:[...(p.breaks||[]),{start:'12:30',end:'13:30'}]}))}
+                    style={{fontSize:11,fontWeight:600,color:'var(--gold)',padding:'4px 8px',borderRadius:6,border:'1px solid var(--gold-dim)',background:'var(--gold-bg)',cursor:'pointer'}}>+ Pausa</button>
+                </div>
+                {(overrideDraft.breaks||[]).map((b,i)=>(
+                  <div key={i} style={{display:'flex',gap:8,alignItems:'center',marginBottom:8}}>
+                    <input type="time" className="input-field" style={{flex:1}} value={b.start}
+                      onChange={e=>setOverrideDraft(p=>({...p,breaks:p.breaks.map((x,j)=>j===i?{...x,start:e.target.value}:x)}))} />
+                    <span style={{color:'var(--ink3)'}}>–</span>
+                    <input type="time" className="input-field" style={{flex:1}} value={b.end}
+                      onChange={e=>setOverrideDraft(p=>({...p,breaks:p.breaks.map((x,j)=>j===i?{...x,end:e.target.value}:x)}))} />
+                    <button onClick={()=>setOverrideDraft(p=>({...p,breaks:p.breaks.filter((_,j)=>j!==i)}))}
+                      style={{padding:'8px 10px',borderRadius:6,background:'oklch(98% 0.02 20)',border:'1px solid oklch(90% 0.04 20)',color:'oklch(45% 0.18 25)',cursor:'pointer'}}>✕</button>
+                  </div>
+                ))}
+              </div>
+            </>)}
+          </div>
+          <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'12px 24px 28px',background:'var(--bg)',borderTop:'1px solid var(--border)'}}>
+            <button className="btn-primary" disabled={!overrideDraft.date||busy} onClick={saveOverride}
+              style={{opacity:overrideDraft.date&&!busy?1:0.4}}>
+              {busy?'Salvataggio...':'Salva'}
+            </button>
+          </div>
+        </div>
+      );
+      return(
+        <div className="screen">
+          <div style={{padding:'env(safe-area-inset-top,16px) 24px 0',flexShrink:0,paddingTop:16}}>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+              <button className="btn-icon" onClick={()=>setScheduleSection('menu')}>←</button>
+              <div><p style={{fontSize:11,color:'var(--ink3)'}}>{s?.name}</p>
+                <h2 style={{fontSize:20,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>Modifiche orario su data</h2></div>
+            </div>
+          </div>
+          <div className="scroll-content" style={{padding:'16px 24px 100px'}}>
+            <p style={{fontSize:12,color:'var(--ink3)',marginBottom:14,lineHeight:1.5}}>Sovrascrive l'orario settimanale per giorni specifici. Utile per aperture straordinarie (domenica, lunedì) o orari diversi.</p>
+            <button onClick={()=>{setEditingOverride('new');setOverrideDraft({date:'',start_time:'09:00',end_time:'19:00',breaks:[],closed:false});}}
+              style={{width:'100%',padding:'12px',marginBottom:16,borderRadius:'var(--radius-sm)',background:'oklch(95% 0.04 240)',border:'1.5px dashed oklch(70% 0.12 240)',color:'oklch(45% 0.18 240)',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+              + Aggiungi modifica
+            </button>
+            {overrides.length===0&&<p style={{fontSize:12,color:'var(--ink3)',fontStyle:'italic',textAlign:'center',padding:'20px 0'}}>Nessuna modifica programmata</p>}
+            {overrides.map(o=>(
+              <div key={o.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:'var(--bg2)',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',marginBottom:8}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{new Date(o.date+'T12:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'long'})}</p>
+                  <p style={{fontSize:12,color:o.start_time?'var(--ink3)':'oklch(45% 0.18 25)',fontWeight:o.start_time?400:700}}>
+                    {o.start_time?`${o.start_time.slice(0,5)} – ${o.end_time.slice(0,5)}${(o.breaks||[]).length?` · ${o.breaks.length} pausa/e`:''}`:'Chiuso'}
+                  </p>
+                </div>
+                <div style={{display:'flex',gap:6}}>
+                  <button onClick={()=>{
+                    setEditingOverride(o.id);
+                    setOverrideDraft({
+                      date:o.date,
+                      start_time:o.start_time?o.start_time.slice(0,5):'09:00',
+                      end_time:o.end_time?o.end_time.slice(0,5):'19:00',
+                      breaks:(o.breaks||[]).map(b=>({start:(b.start||'').slice(0,5),end:(b.end||'').slice(0,5)})),
+                      closed:!o.start_time
+                    });
+                  }}
+                    style={{fontSize:11,color:'var(--ink2)',fontWeight:600,padding:'5px 10px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg)',cursor:'pointer'}}>Modifica</button>
+                  <button onClick={()=>deleteOverride(editingSchedule,o.id)}
+                    style={{fontSize:11,color:'oklch(45% 0.18 25)',fontWeight:600,padding:'5px 10px',borderRadius:6,border:'1px solid oklch(90% 0.04 20)',background:'oklch(98% 0.02 20)',cursor:'pointer'}}>✕</button>
+                </div>
               </div>
             ))}
           </div>
         </div>
-        <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'12px 24px 28px',background:'var(--bg)',borderTop:'1px solid var(--border)'}}>
-          <button className="btn-primary" style={{opacity:busy?0.6:1}} disabled={busy} onClick={saveSchedule}>{busy?'Salvataggio...':'Salva orario'}</button>
-        </div>
-      </div>
-    );
+      );
+    }
   }
 
   if (editingService!==null&&draftService) return(
@@ -2040,7 +2251,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
                       <div style={{display:'flex',gap:8}}>
                         <button onClick={()=>{setEditProfile(s.id);setDraftProfile({...s});}}
                           style={{flex:1,padding:'8px 12px',borderRadius:10,background:'var(--bg2)',color:'var(--ink)',fontSize:12,fontWeight:700,border:'1px solid var(--border)'}}>Profilo</button>
-                        <button onClick={()=>{setEditSched(s.id);setDraftSched(sch?{...sch}:{...DEFAULT_WEEKLY_CONFIG});}}
+                        <button onClick={()=>{setEditSched(s.id);setDraftSched(sch?{...sch}:{...DEFAULT_WEEKLY_CONFIG});setScheduleSection('menu');}}
                           style={{flex:1,padding:'8px 12px',borderRadius:10,background:'var(--ink)',color:'white',fontSize:12,fontWeight:700,border:'none'}}>Orario</button>
                       </div>
                     </div>
@@ -2214,6 +2425,7 @@ function App() {
   const [bookings, setBookings]   = useState([]);
   const [schedules, setSchedules] = useState({});
   const [dayBlocks, setDayBlocks] = useState({});
+  const [dayOverrides, setDayOverrides] = useState({});
   const [toast, setToast]         = useState(null);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showInstall, setShowInstall]     = useState(null); // null | 'android' | 'ios'
@@ -2303,7 +2515,7 @@ function App() {
     setDataLoad(true);
     try {
       const today = toLocalDate(new Date());
-      const [staffRes, svcRes, bkRes, schRes, blkRes] = await Promise.all([
+      const [staffRes, svcRes, bkRes, schRes, blkRes, ovrRes] = await Promise.all([
         supabase.from('staff').select('*').eq('active', true).order('id'),
         supabase.from('services').select('*').eq('active', true).order('id'),
         profile?.is_admin
@@ -2311,6 +2523,7 @@ function App() {
           : supabase.from('bookings').select('*, staff(name, color, initials)').order('date', {ascending:false}).order('time', {ascending:true}),
         supabase.from('staff_schedules').select('*'),
         supabase.from('staff_day_blocks').select('*').gte('date', today).order('date'),
+        supabase.from('staff_day_overrides').select('*').gte('date', today).order('date'),
       ]);
 
       if (staffRes.data) setStaff(staffRes.data);
@@ -2330,6 +2543,14 @@ function App() {
           blkMap[b.staff_id].push(b);
         });
         setDayBlocks(blkMap);
+      }
+      if (ovrRes?.data) {
+        const ovrMap = {};
+        ovrRes.data.forEach(o => {
+          if (!ovrMap[o.staff_id]) ovrMap[o.staff_id] = [];
+          ovrMap[o.staff_id].push(o);
+        });
+        setDayOverrides(ovrMap);
       }
     } catch(e) {
       console.error('loadAppData error:', e);
@@ -2352,14 +2573,14 @@ function App() {
   const isAdmin = profile.is_admin;
 
   const screens = isAdmin ? {
-    'admin-dash':    <AdminDash    bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} services={services} schedules={schedules} dayBlocks={dayBlocks} profile={profile} />,
-    'admin-cal':     <AdminCalendar bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} services={services} schedules={schedules} dayBlocks={dayBlocks} />,
-    'admin-staff':   <AdminStaff   bookings={bookings} schedules={schedules} setSchedules={setSchedules} dayBlocks={dayBlocks} setDayBlocks={setDayBlocks} setToast={setToast} staff={staff} setStaff={setStaff} services={services} setServices={setServices} />,
+    'admin-dash':    <AdminDash    bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} services={services} schedules={schedules} dayBlocks={dayBlocks} dayOverrides={dayOverrides} profile={profile} />,
+    'admin-cal':     <AdminCalendar bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} services={services} schedules={schedules} dayBlocks={dayBlocks} dayOverrides={dayOverrides} />,
+    'admin-staff':   <AdminStaff   bookings={bookings} schedules={schedules} setSchedules={setSchedules} dayBlocks={dayBlocks} setDayBlocks={setDayBlocks} dayOverrides={dayOverrides} setDayOverrides={setDayOverrides} setToast={setToast} staff={staff} setStaff={setStaff} services={services} setServices={setServices} />,
     'admin-history': <AdminHistory bookings={bookings} staff={staff} />,
     'admin-account': <AdminAccount profile={profile} onLogout={handleLogout} />,
   } : {
     'home':     <UserHome     user={authUser} profile={profile} bookings={bookings} setTab={setTab} staff={staff} services={services} />,
-    'booking':  <BookingFlow  profile={profile} bookings={bookings} onBooked={loadAppData} setToast={setToast} staff={staff} services={services} setTab={setTab} schedules={schedules} dayBlocks={dayBlocks} />,
+    'booking':  <BookingFlow  profile={profile} bookings={bookings} onBooked={loadAppData} setToast={setToast} staff={staff} services={services} setTab={setTab} schedules={schedules} dayBlocks={dayBlocks} dayOverrides={dayOverrides} />,
     'calendar': <UserCalendar profile={profile} bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} />,
     'profile':  <UserProfile  profile={profile} bookings={bookings} onLogout={handleLogout} />,
   };
