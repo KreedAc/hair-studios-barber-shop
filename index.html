@@ -708,20 +708,25 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
           <>
             <p style={{fontSize:12,color:'var(--ink3)',marginBottom:14}}>Scegli il tuo barbiere</p>
             <div style={{display:'flex',flexDirection:'column',gap:12,marginBottom:24}}>
-              {staff.map(s => (
-                <button key={s.id} onClick={()=>{setSelectedStaff(s);setTime(null);setDate(null);}}
+              {staff.map(s => {
+                const disabled = s.active===false;
+                return (
+                <button key={s.id} disabled={disabled} onClick={()=>{if(!disabled){setSelectedStaff(s);setTime(null);setDate(null);}}}
                   style={{display:'flex',alignItems:'center',gap:16,padding:'18px',borderRadius:'var(--radius)',
                     background:selectedStaff?.id===s.id?'var(--ink)':'var(--bg)',
                     border:'1.5px solid',borderColor:selectedStaff?.id===s.id?'var(--ink)':'var(--border)',
-                    textAlign:'left',transition:'all 0.15s',width:'100%'}}>
+                    textAlign:'left',transition:'all 0.15s',width:'100%',
+                    opacity:disabled?0.5:1,cursor:disabled?'not-allowed':'pointer',
+                    filter:disabled?'grayscale(0.6)':'none'}}>
                   <div className="avatar" style={{width:52,height:52,fontSize:18,background:s.color,color:'white',fontWeight:700}}>{s.initials}</div>
                   <div style={{flex:1}}>
                     <p style={{fontSize:16,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:selectedStaff?.id===s.id?'white':'var(--ink)'}}>{s.name}</p>
-                    <p style={{fontSize:12,color:selectedStaff?.id===s.id?'rgba(255,255,255,0.6)':'var(--ink3)',marginTop:2}}>{s.role}</p>
+                    <p style={{fontSize:12,color:selectedStaff?.id===s.id?'rgba(255,255,255,0.6)':'var(--ink3)',marginTop:2}}>{disabled?'Non disponibile':s.role}</p>
                   </div>
                   {selectedStaff?.id===s.id&&<span style={{color:'var(--gold)',fontSize:20}}>✓</span>}
                 </button>
-              ))}
+                );
+              })}
             </div>
             <button className="btn-primary" style={{opacity:selectedStaff?1:0.4}} disabled={!selectedStaff} onClick={()=>setStep(2)}>Continua →</button>
           </>
@@ -1356,20 +1361,25 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
         {step===2&&(
           <>
             <div style={{display:'flex',flexDirection:'column',gap:12,marginBottom:24}}>
-              {staff.map(s=>(
-                <button key={s.id} onClick={()=>{setSelectedStaff(s);setTime(null);setDate(null);}}
+              {staff.map(s=>{
+                const disabled = s.active===false;
+                return (
+                <button key={s.id} disabled={disabled} onClick={()=>{if(!disabled){setSelectedStaff(s);setTime(null);setDate(null);}}}
                   style={{display:'flex',alignItems:'center',gap:16,padding:'18px',borderRadius:'var(--radius)',
                     background:selectedStaff?.id===s.id?'var(--ink)':'var(--bg)',
                     border:'1.5px solid',borderColor:selectedStaff?.id===s.id?'var(--ink)':'var(--border)',
-                    textAlign:'left',width:'100%'}}>
+                    textAlign:'left',width:'100%',
+                    opacity:disabled?0.5:1,cursor:disabled?'not-allowed':'pointer',
+                    filter:disabled?'grayscale(0.6)':'none'}}>
                   <div className="avatar" style={{width:52,height:52,fontSize:18,background:s.color,color:'white',fontWeight:700}}>{s.initials}</div>
                   <div style={{flex:1}}>
                     <p style={{fontSize:16,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:selectedStaff?.id===s.id?'white':'var(--ink)'}}>{s.name}</p>
-                    <p style={{fontSize:12,color:selectedStaff?.id===s.id?'rgba(255,255,255,0.6)':'var(--ink3)',marginTop:2}}>{s.role}</p>
+                    <p style={{fontSize:12,color:selectedStaff?.id===s.id?'rgba(255,255,255,0.6)':'var(--ink3)',marginTop:2}}>{disabled?'Non disponibile':s.role}</p>
                   </div>
                   {selectedStaff?.id===s.id&&<span style={{color:'var(--gold)',fontSize:20}}>✓</span>}
                 </button>
-              ))}
+                );
+              })}
             </div>
             <button className="btn-primary" style={{opacity:selectedStaff?1:0.4}} disabled={!selectedStaff} onClick={()=>setStep(3)}>Continua →</button>
           </>
@@ -1618,10 +1628,10 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, services, schedul
               .reduce((sum,b)=>sum+Number(b.earnings),0);
             const net = +(dayEarnings*0.45).toFixed(2);
             return (
-              <div key={s.id} style={{textAlign:'center'}}>
-                <div className="avatar" style={{width:28,height:28,fontSize:10,background:s.color,color:'white',margin:'0 auto 2px',fontWeight:700}}>{s.initials}</div>
+              <div key={s.id} style={{textAlign:'center',opacity:s.active===false?0.5:1}}>
+                <div className="avatar" style={{width:28,height:28,fontSize:10,background:s.color,color:'white',margin:'0 auto 2px',fontWeight:700,filter:s.active===false?'grayscale(0.6)':'none'}}>{s.initials}</div>
                 <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
-                  <p style={{fontSize:10,fontWeight:600,color:'var(--ink)',letterSpacing:0.2}}>{s.name}</p>
+                  <p style={{fontSize:10,fontWeight:600,color:'var(--ink)',letterSpacing:0.2}}>{s.name}{s.active===false?' ⏸':''}</p>
                   {dayEarnings>0&&<span style={{fontSize:9,fontWeight:700,color:'var(--ink2)',background:'rgba(0,0,0,0.08)',borderRadius:3,padding:'1px 3px',lineHeight:1.4}}>€{net}</span>}
                 </div>
               </div>
@@ -1775,7 +1785,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     const initials   = buildInitials(draftProfile.full_name);
     const name       = buildShortName(draftProfile.full_name);
     const updated    = {...draftProfile, initials, name};
-    const { error }  = await supabase.from('staff').update({full_name:updated.full_name,name,role:updated.role,phone:updated.phone,email:updated.email,color:updated.color,initials}).eq('id',editingProfile);
+    const { error }  = await supabase.from('staff').update({full_name:updated.full_name,name,role:updated.role,phone:updated.phone,email:updated.email,color:updated.color,initials,active:updated.active!==false}).eq('id',editingProfile);
     setBusy(false);
     if (error) { setToast('Errore: '+error.message); return; }
     setStaff(prev=>prev.map(s=>s.id===editingProfile?{...s,...updated,initials,name}:s));
@@ -1968,6 +1978,20 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
                   style={{width:36,height:36,borderRadius:'50%',background:c.value,border:'3px solid',borderColor:draftProfile.color===c.value?'var(--ink)':'transparent',transition:'border-color 0.15s'}}></button>)}
               </div></div>
             <div style={{marginTop:8,paddingTop:16,borderTop:'1px solid var(--border)'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',marginBottom:12}}>
+                <div>
+                  <p style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>Dipendente attivo</p>
+                  <p style={{fontSize:11,color:'var(--ink3)',marginTop:2}}>Disattiva per nascondere temporaneamente dalle prenotazioni</p>
+                </div>
+                <button onClick={()=>setDraftProfile(p=>({...p,active:p.active===false?true:false}))}
+                  style={{width:44,height:24,borderRadius:12,padding:2,
+                    background:draftProfile.active===false?'var(--border)':'oklch(60% 0.14 145)',
+                    border:'none',cursor:'pointer',transition:'background 0.2s',flexShrink:0}}>
+                  <div style={{width:20,height:20,borderRadius:'50%',background:'white',
+                    transform:draftProfile.active===false?'translateX(0)':'translateX(20px)',
+                    transition:'transform 0.2s'}}></div>
+                </button>
+              </div>
               <button onClick={()=>deleteStaff(editingProfile)} disabled={busy}
                 style={{width:'100%',padding:'12px',borderRadius:'var(--radius-sm)',border:'1px solid oklch(90% 0.04 20)',
                   fontSize:13,fontWeight:600,color:'oklch(45% 0.18 25)',background:'oklch(98% 0.02 20)'}}>
@@ -2286,11 +2310,11 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
               const isOpen=selected===s.id;
               return(
                 <div key={s.id} className="card" style={{marginBottom:12}}>
-                  <button style={{display:'flex',alignItems:'center',gap:14,width:'100%',textAlign:'left'}} onClick={()=>setSelected(isOpen?null:s.id)}>
-                    <div className="avatar" style={{width:56,height:56,fontSize:18,background:s.color,color:'white',fontWeight:700}}>{s.initials}</div>
+                  <button style={{display:'flex',alignItems:'center',gap:14,width:'100%',textAlign:'left',opacity:s.active===false?0.55:1}} onClick={()=>setSelected(isOpen?null:s.id)}>
+                    <div className="avatar" style={{width:56,height:56,fontSize:18,background:s.color,color:'white',fontWeight:700,filter:s.active===false?'grayscale(0.6)':'none'}}>{s.initials}</div>
                     <div style={{flex:1}}>
-                      <p style={{fontSize:16,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>{s.name}</p>
-                      <p style={{fontSize:12,color:'var(--ink3)',marginTop:2}}>{s.role}</p>
+                      <p style={{fontSize:16,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>{s.name}{s.active===false?' ⏸':''}</p>
+                      <p style={{fontSize:12,color:'var(--ink3)',marginTop:2}}>{s.active===false?'Disattivato — non prenotabile':s.role}</p>
                       <div style={{display:'flex',gap:8,marginTop:6,flexWrap:'wrap'}}>
                         <span className="badge badge-gray">{sBks.length} prenotazioni</span>
                         <span className="badge badge-green">{sBks.filter(b=>b.status==='confirmed').length} confermate</span>
@@ -2576,7 +2600,7 @@ function App() {
     try {
       const today = toLocalDate(new Date());
       const [staffRes, svcRes, bkRes, schRes, blkRes, ovrRes] = await Promise.all([
-        supabase.from('staff').select('*').eq('active', true).order('id'),
+        supabase.from('staff').select('*').order('id'),
         supabase.from('services').select('*').eq('active', true).order('id'),
         profile?.is_admin
           ? supabase.from('bookings').select('*, profiles!left(name, phone)').order('date', {ascending:false}).order('time', {ascending:true})
