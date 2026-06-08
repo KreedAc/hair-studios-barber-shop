@@ -16,7 +16,7 @@
   <meta name="apple-mobile-web-app-title" content="Hair Studios" />
 
   <!-- SEO -->
-  <meta name="description" content="Hair Studios – Barbiere a Gizzeria Lido (Lamezia Terme). Taglio, barba e trattamenti. Prenota online il tuo appuntamento con Antonio C. e Giuseppe R." />
+  <meta name="description" content="Barbiere a Gizzeria Lido a 10 minuti da Lamezia Terme, Sambiase e Nicastro. Taglio uomo, barba, sfumature e trattamenti. Prenota online il tuo appuntamento con Antonio C. e Giuseppe R." />
   <meta name="keywords" content="barbiere lamezia terme, parrucchiere lamezia terme, hair studios lamezia terme, barbiere gizzeria, parrucchiere gizzeria, barbiere gizzeria lido, parrucchiere gizzeria lido, taglio capelli lamezia terme, barber shop lamezia, barbiere vicino a me, parrucchiere vicino a me, hair studios barber shop" />
   <link rel="canonical" href="https://hairstudiosbarbershop.com/" />
   <meta name="author" content="Hair Studios Barber Shop" />
@@ -32,7 +32,7 @@
   <meta property="og:type"        content="website" />
   <meta property="og:url"         content="https://hairstudiosbarbershop.com/" />
   <meta property="og:title"       content="Hair Studios – Barbiere a Gizzeria Lido / Lamezia Terme" />
-  <meta property="og:description" content="Barbiere a Gizzeria Lido (Lamezia Terme). Prenota online il tuo appuntamento. ✂️" />
+  <meta property="og:description" content="Barbiere a Gizzeria Lido, a 10 minuti da Lamezia Terme, Sambiase e Nicastro. Prenota online. ✂️" />
   <meta property="og:image"       content="https://hairstudiosbarbershop.com/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
@@ -42,7 +42,7 @@
   <!-- Twitter / X card -->
   <meta name="twitter:card"        content="summary_large_image" />
   <meta name="twitter:title"       content="Hair Studios – Barbiere a Gizzeria Lido / Lamezia Terme" />
-  <meta name="twitter:description" content="Barbiere a Gizzeria Lido (Lamezia Terme). Prenota online il tuo appuntamento. ✂️" />
+  <meta name="twitter:description" content="Barbiere a Gizzeria Lido, a 10 minuti da Lamezia Terme, Sambiase e Nicastro. Prenota online. ✂️" />
   <meta name="twitter:image"       content="https://hairstudiosbarbershop.com/og-image.png" />
 
   <!-- Schema.org JSON-LD (Local Business / HairSalon) -->
@@ -52,7 +52,7 @@
     "@type": "HairSalon",
     "name": "Hair Studios - Barber Shop",
     "alternateName": ["Hair Studios", "Hair Studios Barber Shop", "Hair Studios Barbiere"],
-    "description": "Barber shop a Gizzeria Lido (Lamezia Terme). Taglio, barba e trattamenti su prenotazione.",
+    "description": "Barbiere specializzato a Gizzeria Lido, punto di riferimento per Lamezia Terme, Sambiase e Nicastro. Taglio uomo, cura della barba, sfumature e trattamenti professionali su prenotazione online.",
     "image": "https://hairstudiosbarbershop.com/og-image.png",
     "logo": "https://hairstudiosbarbershop.com/logo.png",
     "url": "https://hairstudiosbarbershop.com/",
@@ -73,8 +73,12 @@
     },
     "areaServed": [
       { "@type": "City", "name": "Lamezia Terme" },
+      { "@type": "City", "name": "Sambiase" },
+      { "@type": "City", "name": "Nicastro" },
       { "@type": "City", "name": "Gizzeria" },
       { "@type": "City", "name": "Gizzeria Lido" },
+      { "@type": "City", "name": "Falerna" },
+      { "@type": "City", "name": "Curinga" },
       { "@type": "AdministrativeArea", "name": "Provincia di Catanzaro" }
     ],
     "openingHoursSpecification": [
@@ -527,6 +531,15 @@ function AuthScreen({ onLogin }) {
       <button className="btn-primary" style={{marginTop:24,opacity:busy?0.6:1}} disabled={busy} onClick={handle}>
         {busy ? 'Attendere...' : mode==='login' ? 'Accedi' : 'Crea Account'}
       </button>
+
+      <footer style={{marginTop:32,paddingTop:20,borderTop:'1px solid var(--border)',textAlign:'center',width:'100%'}}>
+        <p style={{fontSize:10,color:'var(--ink3)',lineHeight:1.6,letterSpacing:0.2}}>
+          Hair Studios Barbershop · Piazza Luigi Razza 15, Gizzeria Lido (CZ)
+        </p>
+        <p style={{fontSize:9,color:'var(--ink3)',marginTop:4,lineHeight:1.6,opacity:0.7}}>
+          Servizio di taglio e barba per Gizzeria Lido, Lamezia Terme, Sambiase, Nicastro e limitrofi
+        </p>
+      </footer>
     </div>
   );
 }
