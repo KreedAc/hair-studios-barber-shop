@@ -258,10 +258,7 @@ const supabase = CONFIG_READY
 
 // ── COSTANTI ────────────────────────────────────────────────────
 const DAYS_SHORT = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
-const DAYS_ABBR  = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
-const DAYS_FULL  = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'];
 const MONTHS     = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
-const DEFAULT_SCHEDULE = { start:'08:00', end:'20:00', days:[true,true,true,true,true,true,false], breaks:[] };
 
 const DEFAULT_WEEKLY_CONFIG = {
   "0":null,"1":null,
@@ -1103,7 +1100,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
             <div style={{background:'var(--bg2)',borderRadius:'var(--radius-sm)',padding:'14px 16px',marginBottom:20,border:'1px solid var(--border)'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
                 <p style={{fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)',marginBottom:2}}>{booking.client_name}</p>
-                <button onClick={()=>setMode('edit')} style={{background:'none',border:'none',cursor:'pointer',fontSize:16,padding:'0 0 0 8px',color:'var(--ink3)',lineHeight:1}} title="Modifica note">✏️</button>
+                <button onClick={()=>setMode('edit')} aria-label="Modifica appuntamento" style={{background:'none',border:'none',cursor:'pointer',fontSize:16,padding:'0 0 0 8px',color:'var(--ink3)',lineHeight:1}} title="Modifica appuntamento">✏️</button>
               </div>
               {(booking.profiles?.phone||booking.client_phone)&&(()=>{
                 const tel=booking.profiles?.phone||booking.client_phone;
@@ -1712,13 +1709,12 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, services, schedul
             {staff.map((s,si)=>(
               <div key={s.id} style={{position:'relative',borderLeft:si===1?'1px solid var(--border)':'none'}}>
                 {dayBks.filter(b=>b.staff_id===s.id).map(b=>{
-                  const top=timeToY(b.time)*(72/60);
+                  const top=Math.max(0,timeToY(b.time)*(72/60));
                   const h=Math.ceil((b.service_duration||30)/30)*30*(72/60);
                   return(
                     <div key={b.id} onClick={()=>setActiveBooking(b)} style={{
                       position:'absolute',top,left:4,right:4,height:h,
                       background:b.status==='confirmed'?s.color:'var(--gold-bg)',
-                      borderLeft:`3px solid ${b.status==='confirmed'?s.color:'var(--gold)'}`,
                       border:`1px solid rgba(0,0,0,0.22)`,
                       borderLeft:`3px solid ${b.status==='confirmed'?s.color:'var(--gold)'}`,
                       borderRadius:6,padding:'4px 6px',overflow:'hidden',cursor:'pointer',opacity:b.status==='confirmed'?1:0.8}}>
@@ -1908,6 +1904,19 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
 
   const saveOverride = async () => {
     if (!overrideDraft.date) return;
+    // Validazione orari: chiusura dopo apertura, pause coerenti e dentro l'orario
+    if (!overrideDraft.closed) {
+      const t2m = t => { const [h,m]=(t||'').split(':').map(Number); return h*60+m; };
+      if (t2m(overrideDraft.end_time) <= t2m(overrideDraft.start_time)) {
+        setToast('⚠️ La chiusura deve essere dopo l\'apertura'); return;
+      }
+      for (const b of (overrideDraft.breaks||[]).filter(b=>b.start&&b.end)) {
+        if (t2m(b.end) <= t2m(b.start)) { setToast('⚠️ Pausa con orari non validi'); return; }
+        if (t2m(b.start) < t2m(overrideDraft.start_time) || t2m(b.end) > t2m(overrideDraft.end_time)) {
+          setToast('⚠️ Pausa fuori dall\'orario di apertura'); return;
+        }
+      }
+    }
     setBusy(true);
     const payload = {
       staff_id:   editingSchedule,
@@ -2240,7 +2249,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
                     <span style={{color:'var(--ink3)'}}>–</span>
                     <input type="time" className="input-field" style={{flex:1}} value={b.end}
                       onChange={e=>setOverrideDraft(p=>({...p,breaks:p.breaks.map((x,j)=>j===i?{...x,end:e.target.value}:x)}))} />
-                    <button onClick={()=>setOverrideDraft(p=>({...p,breaks:p.breaks.filter((_,j)=>j!==i)}))}
+                    <button onClick={()=>setOverrideDraft(p=>({...p,breaks:p.breaks.filter((_,j)=>j!==i)}))} aria-label="Rimuovi pausa"
                       style={{padding:'8px 10px',borderRadius:6,background:'oklch(98% 0.02 20)',border:'1px solid oklch(90% 0.04 20)',color:'oklch(45% 0.18 25)',cursor:'pointer'}}>✕</button>
                   </div>
                 ))}
@@ -2291,7 +2300,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
                     });
                   }}
                     style={{fontSize:11,color:'var(--ink2)',fontWeight:600,padding:'5px 10px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg)',cursor:'pointer'}}>Modifica</button>
-                  <button onClick={()=>deleteOverride(editingSchedule,o.id)}
+                  <button onClick={()=>deleteOverride(editingSchedule,o.id)} aria-label="Elimina modifica orario"
                     style={{fontSize:11,color:'oklch(45% 0.18 25)',fontWeight:600,padding:'5px 10px',borderRadius:6,border:'1px solid oklch(90% 0.04 20)',background:'oklch(98% 0.02 20)',cursor:'pointer'}}>✕</button>
                 </div>
               </div>
@@ -2485,7 +2494,7 @@ function AdminHistory({ bookings, staff }) {
             style={{width:'100%',background:'var(--bg2)',border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',
               padding:'10px 12px 10px 36px',fontSize:14,color:'var(--ink)',outline:'none',fontFamily:"'Jost',sans-serif"}}
           />
-          {search&&<button onClick={()=>setSearch('')} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:16,color:'var(--ink3)',lineHeight:1}}>✕</button>}
+          {search&&<button onClick={()=>setSearch('')} aria-label="Cancella ricerca" style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:16,color:'var(--ink3)',lineHeight:1}}>✕</button>}
         </div>
         <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingBottom:2}}>
           {[{id:'upcoming',label:'Prossime'},{id:'all',label:'Tutte'},{id:'confirmed',label:'Confermate'},{id:'pending',label:'In attesa'},{id:'cancelled',label:'Annullate'}].map(f=>(
@@ -2542,7 +2551,7 @@ function InstallBanner({ type, onInstall, onDismiss }) {
           Installa
         </button>
       )}
-      <button onClick={onDismiss}
+      <button onClick={onDismiss} aria-label="Chiudi banner"
         style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',
           fontSize:18,cursor:'pointer',padding:'0 0 0 4px',flexShrink:0,lineHeight:1}}>✕</button>
     </div>
@@ -2707,7 +2716,10 @@ function App() {
   };
 
   const handleLogin  = (user) => setAuthUser(user);
-  const handleLogout = () => { setAuthUser(null); setProfile(null); setStaff([]); setServices([]); setBookings([]); };
+  const handleLogout = async () => {
+    try { await supabase.auth.signOut(); } catch(e) {} // difensivo: chiude la sessione anche se il chiamante non l'ha fatto
+    setAuthUser(null); setProfile(null); setStaff([]); setServices([]); setBookings([]); setBusySlots([]);
+  };
 
   if (loading) return <LoadingScreen />;
   if (!profile) return (
@@ -2781,8 +2793,34 @@ function ConfigScreen() {
   );
 }
 
+// ── ERROR BOUNDARY ──────────────────────────────────────────────
+// Evita lo schermo bianco totale in caso di errore di render
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error, info) { console.error('App crash:', error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{minHeight:'100dvh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,background:'var(--bg)',textAlign:'center'}}>
+          <div style={{fontSize:48,marginBottom:16}}>✂️</div>
+          <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:700,color:'var(--ink)',marginBottom:8}}>Ops, qualcosa è andato storto</h1>
+          <p style={{fontSize:14,color:'var(--ink3)',marginBottom:24}}>Ricarica l'app per continuare.</p>
+          <button onClick={()=>window.location.reload()}
+            style={{background:'var(--ink)',color:'white',padding:'14px 32px',borderRadius:12,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",border:'none',cursor:'pointer'}}>
+            Ricarica
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
-  CONFIG_READY ? <App /> : <ConfigScreen />
+  <ErrorBoundary>
+    {CONFIG_READY ? <App /> : <ConfigScreen />}
+  </ErrorBoundary>
 );
 </script>
 </body>
