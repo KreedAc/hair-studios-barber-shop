@@ -668,7 +668,11 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
       notes: bookingNotes || null,
     });
     setBusy(false);
-    if (error) { setToast('Errore: ' + error.message); return; }
+    if (error) {
+      setToast(error.code==='23505' ? '⚠️ Slot appena occupato, scegli un altro orario' : 'Errore: ' + error.message);
+      if (error.code==='23505') { setTime(null); setDate(null); setStep(2); onBooked(); }
+      return;
+    }
     setToast('✓ Prenotazione inviata!');
     setStep(0); setSel([]); setSelectedStaff(null); setDate(null); setTime(null); setBookingNotes('');
     onBooked();
@@ -1322,7 +1326,10 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
       status: 'confirmed',
     });
     setBusy(false);
-    if (error) { setToast('Errore: '+error.message); return; }
+    if (error) {
+      setToast(error.code==='23505' ? '⚠️ Slot già occupato da un\'altra prenotazione' : 'Errore: '+error.message);
+      return;
+    }
     setToast('✓ Appuntamento inserito');
     onBooked();
     onClose();
@@ -2555,6 +2562,7 @@ function App() {
   const [schedules, setSchedules] = useState({});
   const [dayBlocks, setDayBlocks] = useState({});
   const [dayOverrides, setDayOverrides] = useState({});
+  const [busySlots, setBusySlots]   = useState([]); // slot occupati (dati minimi, per il check disponibilità lato cliente)
   const [toast, setToast]         = useState(null);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showInstall, setShowInstall]     = useState(null); // null | 'android' | 'ios'
@@ -2644,15 +2652,16 @@ function App() {
     setDataLoad(true);
     try {
       const today = toLocalDate(new Date());
-      const [staffRes, svcRes, bkRes, schRes, blkRes, ovrRes] = await Promise.all([
+      const [staffRes, svcRes, bkRes, schRes, blkRes, ovrRes, busyRes] = await Promise.all([
         supabase.from('staff').select('*').order('id'),
         supabase.from('services').select('*').eq('active', true).order('id'),
         profile?.is_admin
           ? supabase.from('bookings').select('*, profiles!left(name, phone)').order('date', {ascending:false}).order('time', {ascending:true})
-          : supabase.from('bookings').select('*, staff(name, color, initials)').order('date', {ascending:false}).order('time', {ascending:true}),
+          : supabase.from('bookings').select('*, staff(name, color, initials)').eq('user_id', profile.id).order('date', {ascending:false}).order('time', {ascending:true}),
         supabase.from('staff_schedules').select('*'),
         supabase.from('staff_day_blocks').select('*').gte('date', today).order('date'),
         supabase.from('staff_day_overrides').select('*').gte('date', today).order('date'),
+        profile?.is_admin ? Promise.resolve({data:null}) : supabase.rpc('get_busy_slots'),
       ]);
 
       if (staffRes.data) setStaff(staffRes.data);
@@ -2680,6 +2689,13 @@ function App() {
           ovrMap[o.staff_id].push(o);
         });
         setDayOverrides(ovrMap);
+      }
+      if (busyRes?.data) {
+        // Slot occupati anonimi per il check disponibilità (forma compatibile con checkSlot)
+        setBusySlots(busyRes.data.map(r => ({
+          staff_id: r.staff_id, date: r.date, time: r.time,
+          service_duration: r.service_duration, status: 'confirmed',
+        })));
       }
     } catch(e) {
       console.error('loadAppData error:', e);
@@ -2709,7 +2725,7 @@ function App() {
     'admin-account': <AdminAccount profile={profile} onLogout={handleLogout} />,
   } : {
     'home':     <UserHome     user={authUser} profile={profile} bookings={bookings} setTab={setTab} staff={staff} services={services} />,
-    'booking':  <BookingFlow  profile={profile} bookings={bookings} onBooked={loadAppData} setToast={setToast} staff={staff} services={services} setTab={setTab} schedules={schedules} dayBlocks={dayBlocks} dayOverrides={dayOverrides} />,
+    'booking':  <BookingFlow  profile={profile} bookings={busySlots} onBooked={loadAppData} setToast={setToast} staff={staff} services={services} setTab={setTab} schedules={schedules} dayBlocks={dayBlocks} dayOverrides={dayOverrides} />,
     'calendar': <UserCalendar profile={profile} bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} />,
     'profile':  <UserProfile  profile={profile} bookings={bookings} onLogout={handleLogout} />,
   };
