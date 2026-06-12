@@ -309,6 +309,15 @@ function checkSlot(date, time, staffId, duration, bookings, schedules, dayBlocks
   });
 }
 
+// Verifica se un giorno è chiuso considerando prima gli override su data, poi l'orario settimanale
+function isDayClosed(staffId, dateObj, schedules, dayOverrides) {
+  if (!staffId) return true;
+  const dStr = toLocalDate(dateObj);
+  const ovr = (dayOverrides?.[staffId] || []).find(o => o.date === dStr);
+  if (ovr) return !ovr.start_time; // override presente: chiuso solo se senza orario
+  return !((schedules[staffId] || {})[dateObj.getDay()]);
+}
+
 const ROLE_OPTIONS  = ['Senior Barber','Barber','Titolare','Apprendista'];
 const COLOR_OPTIONS = [
   { label:'Blu',     value:'oklch(65% 0.14 240)' },
@@ -350,7 +359,8 @@ function MonthYearPicker({ weekDates, setWeekOffset, onClose, onSelect, allowPas
   const nowYear  = new Date().getFullYear();
   const nowMonth = new Date().getMonth();
   const select = (m) => {
-    setWeekOffset(offsetForMonthYear(pickerYear, m));
+    const off = offsetForMonthYear(pickerYear, m);
+    setWeekOffset(allowPast ? off : Math.max(0, off)); // i clienti non navigano nel passato
     if (onSelect) onSelect();
     onClose();
   };
@@ -551,8 +561,8 @@ function AuthScreen({ onLogin }) {
 // ── USER HOME ───────────────────────────────────────────────────
 function UserHome({ user, profile, bookings, setTab, staff, services }) {
   const myBookings = bookings.filter(b => b.userId===profile.id||b.user_id===profile.id)
-    .sort((a,b) => new Date(a.date+' '+a.time) - new Date(b.date+' '+b.time));
-  const next = myBookings.find(b => b.status!=='cancelled' && new Date(b.date+' '+b.time) >= new Date());
+    .sort((a,b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+  const next = myBookings.find(b => b.status!=='cancelled' && new Date(`${b.date}T${b.time}`) >= new Date());
   const staffMember = next ? staff.find(s => s.id===next.staff_id||s.id===next.staffId) : null;
 
   const hour = new Date().getHours();
@@ -660,7 +670,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
     setBusy(false);
     if (error) { setToast('Errore: ' + error.message); return; }
     setToast('✓ Prenotazione inviata!');
-    setStep(0); setSel([]); setSelectedStaff(null); setDate(null); setTime(null);
+    setStep(0); setSel([]); setSelectedStaff(null); setDate(null); setTime(null); setBookingNotes('');
     onBooked();
     setTab('home');
   };
@@ -771,7 +781,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
                 const today = new Date(); today.setHours(0,0,0,0);
                 const isPast = d < today;
                 const dow = d.getDay();
-                const isClosed = selectedStaff && !(schedules[selectedStaff.id]||{})[dow];
+                const isClosed = selectedStaff && isDayClosed(selectedStaff.id, d, schedules, dayOverrides);
                 const disabled = isPast || isClosed;
                 const isSel = selectedDay===i && !disabled;
                 const isToday = d.toDateString()===new Date().toDateString();
@@ -1025,7 +1035,7 @@ function UserProfile({ profile, bookings, onLogout }) {
 }
 
 // ── BOOKING ACTION MODAL (admin) ────────────────────────────────
-function BookingActionModal({ booking, bookings, onSave, onClose, staff, services, schedules, dayBlocks, dayOverrides }) {
+function BookingActionModal({ booking, bookings, onSave, onClose, staff, services, schedules, dayBlocks, dayOverrides, setToast }) {
   const [mode, setMode]         = useState('menu');
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState(0);
@@ -1045,22 +1055,24 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
     const dateStr=toLocalDate(weekDates[selectedDay]);
     if (!newTime) return;
     setBusy(true);
-    const { error } = await supabase.from('bookings').update({ date:dateStr, time:newTime, staff_id:newStaff, status:'confirmed' }).eq('id',booking.id);
+    // reminder_sent torna false: il cliente riceverà il promemoria per il nuovo orario
+    const { error } = await supabase.from('bookings').update({ date:dateStr, time:newTime, staff_id:newStaff, status:'confirmed', reminder_sent:false }).eq('id',booking.id);
     setBusy(false);
-    if (error) return;
+    if (error) { setToast && setToast('Errore: '+error.message); return; }
     onSave();
   };
 
   const cancelBooking = async () => {
     setBusy(true);
-    await supabase.from('bookings').update({ status:'cancelled' }).eq('id',booking.id);
+    const { error } = await supabase.from('bookings').update({ status:'cancelled' }).eq('id',booking.id);
     setBusy(false);
+    if (error) { setToast && setToast('Errore: '+error.message); return; }
     onSave();
   };
 
   const saveEdit = async () => {
     setBusy(true);
-    await supabase.from('bookings').update({
+    const { error } = await supabase.from('bookings').update({
       client_name: editName,
       service_name: editServiceName,
       service_duration: editDuration,
@@ -1069,6 +1081,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
       earnings: editEarnings !== '' ? parseFloat(editEarnings) : null,
     }).eq('id', booking.id);
     setBusy(false);
+    if (error) { setToast && setToast('Errore: '+error.message); return; }
     onSave();
   };
 
@@ -1194,14 +1207,18 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
               <h3 style={{fontSize:17,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>Sposta appuntamento</h3>
             </div>
             <div style={{display:'flex',gap:8,marginBottom:14}}>
-              {staff.map(s=>(
-                <button key={s.id} onClick={()=>{setNewStaff(s.id);setNewTime(null);}}
+              {staff.map(s=>{
+                const dis = s.active===false && newStaff!==s.id;
+                return (
+                <button key={s.id} disabled={dis} onClick={()=>{if(!dis){setNewStaff(s.id);setNewTime(null);}}}
                   style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:'10px 8px',borderRadius:12,border:'1.5px solid',
-                    borderColor:newStaff===s.id?'var(--ink)':'var(--border)',background:newStaff===s.id?'var(--ink)':'var(--bg2)'}}>
+                    borderColor:newStaff===s.id?'var(--ink)':'var(--border)',background:newStaff===s.id?'var(--ink)':'var(--bg2)',
+                    opacity:dis?0.4:1,cursor:dis?'not-allowed':'pointer',filter:dis?'grayscale(0.6)':'none'}}>
                   <div className="avatar" style={{width:32,height:32,fontSize:11,background:s.color,color:'white',fontWeight:700}}>{s.initials}</div>
                   <p style={{fontSize:11,fontWeight:600,color:newStaff===s.id?'white':'var(--ink)'}}>{s.name.split(' ')[0]}</p>
                 </button>
-              ))}
+                );
+              })}
             </div>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
               <button className="btn-icon" style={{width:32,height:32,fontSize:14}} onClick={()=>setWeekOffset(o=>Math.max(0,o-1))} disabled={weekOffset===0}>‹</button>
@@ -1218,7 +1235,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
               {weekDates.map((d,i)=>{
                 const today=new Date(); today.setHours(0,0,0,0);
                 const isPast=d<today;
-                const isClosed=!(schedules[newStaff]||{})[d.getDay()];
+                const isClosed=isDayClosed(newStaff, d, schedules, dayOverrides);
                 const disabled=isPast||isClosed;
                 const isSel=selectedDay===i&&!disabled;
                 return(
@@ -1423,7 +1440,7 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
               {weekDates.map((d,i)=>{
                 const today=new Date(); today.setHours(0,0,0,0);
                 const isPast=d<today;
-                const isClosed=selectedStaff&&!(schedules[selectedStaff.id]||{})[d.getDay()];
+                const isClosed=selectedStaff&&isDayClosed(selectedStaff.id, d, schedules, dayOverrides);
                 const disabled=isPast||isClosed;
                 const isSel=selectedDay===i&&!disabled;
                 const isToday=d.toDateString()===new Date().toDateString();
@@ -1491,7 +1508,15 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
   );
 
   const accept = async (id) => {
-    await supabase.from('bookings').update({status:'confirmed'}).eq('id',id);
+    // Ricontrolla che lo slot sia ancora libero (escludendo la prenotazione stessa)
+    const bk = bookings.find(b=>b.id===id);
+    if (bk) {
+      const stillFree = checkSlot(bk.date, bk.time?.slice(0,5), bk.staff_id, bk.service_duration,
+        bookings.filter(b=>b.id!==id), schedules, dayBlocks, dayOverrides);
+      if (!stillFree) { setToast('⚠️ Slot occupato o fuori orario: usa "Sposta"'); return; }
+    }
+    const { error } = await supabase.from('bookings').update({status:'confirmed'}).eq('id',id);
+    if (error) { setToast('Errore: '+error.message); return; }
     setToast('✓ Prenotazione accettata'); onRefresh();
   };
   const reject = async (id) => {
@@ -1583,7 +1608,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
       </div>
       {activeBooking&&(
         <BookingActionModal booking={activeBooking} bookings={bookings} staff={staff} services={services}
-          schedules={schedules} dayBlocks={dayBlocks} dayOverrides={dayOverrides}
+          schedules={schedules} dayBlocks={dayBlocks} dayOverrides={dayOverrides} setToast={setToast}
           onSave={()=>{setActiveBooking(null);setToast('✓ Salvato');onRefresh();}}
           onClose={()=>setActiveBooking(null)} />
       )}
@@ -1704,7 +1729,7 @@ function AdminCalendar({ bookings, onRefresh, setToast, staff, services, schedul
       </div>
       {activeBooking&&(
         <BookingActionModal booking={activeBooking} bookings={bookings} staff={staff} services={services}
-          schedules={schedules} dayBlocks={dayBlocks} dayOverrides={dayOverrides}
+          schedules={schedules} dayBlocks={dayBlocks} dayOverrides={dayOverrides} setToast={setToast}
           onSave={()=>{setActiveBooking(null);setToast('✓ Salvato');onRefresh();}}
           onClose={()=>setActiveBooking(null)} />
       )}
@@ -2436,8 +2461,8 @@ function AdminHistory({ bookings, staff }) {
     .sort((a,b) => {
       const asc = filter==='upcoming';
       return asc
-        ? new Date(a.date+' '+a.time) - new Date(b.date+' '+b.time)
-        : new Date(b.date+' '+b.time) - new Date(a.date+' '+a.time);
+        ? new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`)
+        : new Date(`${b.date}T${b.time}`) - new Date(`${a.date}T${a.time}`);
     });
 
   return(
