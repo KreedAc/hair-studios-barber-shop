@@ -1,5 +1,6 @@
-const CACHE = 'hairstudios-v4';
+const CACHE = 'hairstudios-v5';
 const PRECACHE = ['/'];
+const NETWORK_TIMEOUT = 3000; // ms: oltre questo, su rete lenta si usa la cache
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)));
@@ -35,14 +36,27 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // File app (index.html, logo, manifest, sw…) → network first, cache fallback
-  // Così gli aggiornamenti arrivano subito a chi ha la webapp installata
-  e.respondWith(
-    fetch(e.request)
-      .then(res => {
-        if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
-        return res;
-      })
-      .catch(() => caches.match(e.request))
-  );
+  // File app → network first con timeout: aggiornamenti immediati,
+  // ma su rete lenta/assente si cade sulla cache entro 3 secondi
+  e.respondWith((async () => {
+    const cached  = await caches.match(e.request);
+    const network = fetch(e.request).then(res => {
+      if (res.ok) {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+      }
+      return res;
+    }).catch(() => null);
+
+    if (!cached) {
+      const res = await network;
+      return res || new Response('Offline', { status: 503 });
+    }
+
+    const winner = await Promise.race([
+      network,
+      new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), NETWORK_TIMEOUT)),
+    ]);
+    return (winner && winner !== 'TIMEOUT') ? winner : cached;
+  })());
 });

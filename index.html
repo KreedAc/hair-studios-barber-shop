@@ -106,8 +106,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
   <!-- React + Babel -->
-  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
 
   <style>
@@ -2639,13 +2639,16 @@ function App() {
 
   useEffect(() => {
     if (!profile?.is_admin) return;
+    let debounce = null;
     const channel = supabase
       .channel('bookings-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
-        loadAppData();
+        // Debounce: una raffica di eventi ravvicinati genera un solo reload
+        clearTimeout(debounce);
+        debounce = setTimeout(() => loadAppData(), 400);
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { clearTimeout(debounce); supabase.removeChannel(channel); };
   }, [profile?.id]);
 
   const loadAppData = async () => {
