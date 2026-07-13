@@ -29,19 +29,22 @@ regola delle 2 ore e rimuove la vecchia policy.
 
 ## 2. Notifica Telegram al barbiere
 
-1. **Crea il bot**: su Telegram apri **@BotFather** → `/newbot` →
-   dagli un nome (es. *Hair Studios Notifiche*) e uno username
-   (es. `HairStudiosBot`). BotFather ti dà il **token**
-   (formato `123456:ABC-...`): copialo, serve al punto 4.
-2. **Ogni barbiere avvia il bot**: Antonio e Giuseppe cercano il bot su
-   Telegram e premono **Avvia** (`/start`). Senza questo passaggio il bot
-   non può scrivergli (limite di Telegram).
-3. **Recupera il chat_id di ciascuno**: il modo più semplice è che ogni
-   barbiere scriva a **@userinfobot** su Telegram, che risponde con il
-   proprio `Id` (un numero, es. `123456789`).
-   - *Alternativa: dopo che il barbiere ha scritto `/start` al tuo bot,
-     apri nel browser `https://api.telegram.org/bot<TOKEN>/getUpdates`
-     e leggi `message.chat.id`.*
+Si usa il **bot Telegram già esistente**: non serve crearne uno nuovo.
+
+1. **Recupera il token del bot**: è quello che usi già (formato
+   `123456:ABC-...`). Se non lo ritrovi, su **@BotFather** →
+   `/mybots` → seleziona il bot → **API Token**.
+2. **Verifica che i barbieri abbiano avviato il bot**: se il bot scrive
+   già ad Antonio e Giuseppe è tutto ok; altrimenti devono cercarlo su
+   Telegram e premere **Avvia** (`/start`), altrimenti il bot non può
+   scrivergli (limite di Telegram).
+3. **Recupera il chat_id di ciascuno**: se il bot già gli scrive, il
+   chat_id ce l'hai già dove gestisci gli invii. In alternativa:
+   - ogni barbiere scrive a **@userinfobot**, che risponde con il
+     proprio `Id` (un numero, es. `123456789`);
+   - oppure, dopo che il barbiere ha scritto al bot, apri
+     `https://api.telegram.org/bot<TOKEN>/getUpdates` e leggi
+     `message.chat.id`.
 4. **Inserisci i chat_id nell'app**: account admin → **Team** →
    profilo del barbiere → campo **"Telegram Chat ID"** → salva.
    Senza chat_id la notifica Telegram per quel barbiere non parte
@@ -76,7 +79,7 @@ La conferma di annullamento al cliente parte via email tramite
 3. **Edge Functions → Secrets** → aggiungi:
    | Nome | Valore |
    |---|---|
-   | `TELEGRAM_BOT_TOKEN` | il token del bot (punto 2.1) |
+   | `TELEGRAM_BOT_TOKEN` | il token del bot esistente (punto 2.1) |
    | `RESEND_API_KEY` | la chiave `re_...` (punto 3.3) |
    | `MAIL_FROM` | `Hair Studios <prenotazioni@hairstudiosbarbershop.com>` |
 
