@@ -400,12 +400,6 @@ const toLocalDate = (d) => {
 };
 const TODAY = () => toLocalDate(new Date());
 
-// Il cliente può annullare (anche se confermata) fino a 2 ore prima dell'appuntamento
-const CANCEL_LIMIT_HOURS = 2;
-const canCancelBooking = (b) =>
-  b.status !== 'cancelled' &&
-  new Date(`${b.date}T${b.time}`) - new Date() > CANCEL_LIMIT_HOURS * 3600 * 1000;
-
 const mapBooking = (b) => ({
   ...b,
   service:     { name: b.service_name, duration: b.service_duration },
@@ -890,15 +884,9 @@ function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
     ? myBookings.filter(b=>b.date===toLocalDate(weekDates[selectedDay]))
     : myBookings;
 
-  const [confirmingId, setConfirmingId] = useState(null);
-
   const cancel = async (id) => {
-    // La regola delle 2 ore è verificata anche lato server dalla RPC
-    const { error } = await supabase.rpc('cancel_own_booking', { p_booking_id: id });
-    setConfirmingId(null);
+    const { error } = await supabase.from('bookings').update({ status:'cancelled' }).eq('id',id);
     if (error) { setToast('Errore: '+error.message); return; }
-    // Email di notifica (best-effort: l'annullamento è comunque già avvenuto)
-    supabase.functions.invoke('booking-cancelled', { body: { booking_id: id } }).catch(()=>{});
     setToast('Prenotazione annullata');
     onRefresh();
   };
@@ -965,33 +953,12 @@ function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
                     <p style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{s.name}</p>
                     <p style={{fontSize:11,color:'var(--ink3)'}}>{b.service_duration} min</p>
                   </div>
-                  {canCancelBooking(b) ? (
-                    confirmingId===b.id ? (
-                      <div style={{display:'flex',gap:6}}>
-                        <button onClick={()=>setConfirmingId(null)}
-                          style={{fontSize:11,fontWeight:600,padding:'6px 12px',borderRadius:8,border:'1px solid var(--border)',
-                            color:'var(--ink2)',background:'var(--bg)'}}>
-                          No
-                        </button>
-                        <button onClick={()=>cancel(b.id)}
-                          style={{fontSize:11,fontWeight:700,padding:'6px 12px',borderRadius:8,border:'none',
-                            color:'white',background:'oklch(45% 0.18 25)'}}>
-                          Sì, annulla
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={()=>setConfirmingId(b.id)}
-                        style={{fontSize:11,fontWeight:600,padding:'6px 12px',borderRadius:8,border:'1px solid',
-                          color:'oklch(45% 0.18 25)',borderColor:'oklch(90% 0.04 20)',background:'oklch(98% 0.02 20)'}}>
-                        Annulla
-                      </button>
-                    )
-                  ) : (
-                    new Date(`${b.date}T${b.time}`) > new Date() && (
-                      <span style={{fontSize:10,color:'var(--ink3)',textAlign:'right',maxWidth:90}}>
-                        Annullabile fino a {CANCEL_LIMIT_HOURS}h prima
-                      </span>
-                    )
+                  {b.status==='pending'&&(
+                    <button onClick={()=>cancel(b.id)}
+                      style={{fontSize:11,fontWeight:600,padding:'6px 12px',borderRadius:8,border:'1px solid',
+                        color:'oklch(45% 0.18 25)',borderColor:'oklch(90% 0.04 20)',background:'oklch(98% 0.02 20)'}}>
+                      Annulla
+                    </button>
                   )}
                 </div>
               )}
@@ -1098,7 +1065,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
 
   const cancelBooking = async () => {
     setBusy(true);
-    const { error } = await supabase.from('bookings').update({ status:'cancelled', cancelled_at:new Date().toISOString(), cancelled_by:'staff' }).eq('id',booking.id);
+    const { error } = await supabase.from('bookings').update({ status:'cancelled' }).eq('id',booking.id);
     setBusy(false);
     if (error) { setToast && setToast('Errore: '+error.message); return; }
     onSave();
@@ -1113,8 +1080,6 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
       status: editStatus,
       notes: editNotes || null,
       earnings: editEarnings !== '' ? parseFloat(editEarnings) : null,
-      ...(editStatus==='cancelled' && booking.status!=='cancelled'
-        ? { cancelled_at:new Date().toISOString(), cancelled_by:'staff' } : {}),
     }).eq('id', booking.id);
     setBusy(false);
     if (error) { setToast && setToast('Errore: '+error.message); return; }
@@ -1532,11 +1497,6 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
   const myBks    = myStaff ? bookings.filter(b=>b.staff_id===myStaff) : bookings;
   const todayBks = myBks.filter(b=>b.date===today&&b.status!=='cancelled');
   const pending  = myBks.filter(b=>b.status==='pending');
-  // Appuntamenti futuri annullati dal cliente: in evidenza, lo slot si è liberato
-  const clientCancels = myBks
-    .filter(b=>b.status==='cancelled'&&b.cancelled_by==='client'&&b.date>=today)
-    .sort((a,b)=>(b.cancelled_at||'').localeCompare(a.cancelled_at||''))
-    .slice(0,5);
   const confirmed= myBks.filter(b=>b.status==='confirmed'&&b.date>=today).length;
   const myStaffObj = myStaff ? staff.find(s=>s.id===myStaff) : null;
   const [activeBooking, setActiveBooking] = useState(null);
@@ -1564,7 +1524,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
     setToast('✓ Prenotazione accettata'); onRefresh();
   };
   const reject = async (id) => {
-    await supabase.from('bookings').update({status:'cancelled', cancelled_at:new Date().toISOString(), cancelled_by:'staff'}).eq('id',id);
+    await supabase.from('bookings').update({status:'cancelled'}).eq('id',id);
     setToast('Prenotazione rifiutata'); onRefresh();
   };
 
@@ -1619,32 +1579,6 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
                     <button onClick={()=>setActiveBooking(b)} style={{flex:1,padding:10,borderRadius:8,border:'1.5px solid var(--border)',fontSize:13,fontWeight:600,color:'var(--ink2)',background:'var(--bg)'}}>Sposta</button>
                     <button onClick={()=>accept(b.id)} style={{flex:2,padding:10,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'white',background:'var(--ink)'}}>✓ Accetta</button>
                   </div>
-                </div>
-              );
-            })}
-            <div className="divider"></div>
-          </>
-        )}
-
-        {clientCancels.length>0&&(
-          <>
-            <div className="section-header">
-              <span className="section-title">Annullate dai clienti</span>
-              <span className="badge badge-red">{clientCancels.length}</span>
-            </div>
-            {clientCancels.map(b=>{
-              const s=staff.find(st=>st.id===b.staff_id);
-              return(
-                <div key={b.id} className="card" style={{marginBottom:10,borderLeft:'3px solid oklch(55% 0.18 25)'}}>
-                  <p style={{fontSize:14,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>{b.client_name}</p>
-                  <p style={{fontSize:12,color:'var(--ink3)',marginTop:2}}>
-                    {b.service_name} · {new Date(b.date).toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'long'})} alle {b.time?.slice(0,5)}{s?` con ${s.name}`:''}
-                  </p>
-                  {b.cancelled_at&&(
-                    <p style={{fontSize:11,color:'oklch(45% 0.18 25)',marginTop:4,fontWeight:600}}>
-                      Annullata il {new Date(b.cancelled_at).toLocaleString('it-IT',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})} · slot di nuovo libero
-                    </p>
-                  )}
                 </div>
               );
             })}
@@ -1875,7 +1809,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
   const [draftSchedule, setDraftSched]  = useState(null);
   const [scheduleSection, setScheduleSection] = useState('menu'); // menu | weekly | blocks | overrides
   const [addingStaff, setAddingStaff]   = useState(false);
-  const [newDraft, setNewDraft]         = useState({fullName:'',role:'Barber',phone:'',email:'',telegram:'',color:'oklch(65% 0.14 240)'});
+  const [newDraft, setNewDraft]         = useState({fullName:'',role:'Barber',phone:'',email:'',color:'oklch(65% 0.14 240)'});
   const [editingService, setEditSvc]    = useState(null);
   const [draftService, setDraftService] = useState(null);
   const [addingBlock, setAddingBlock]   = useState(null);
@@ -1899,7 +1833,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     const initials   = buildInitials(draftProfile.full_name);
     const name       = buildShortName(draftProfile.full_name);
     const updated    = {...draftProfile, initials, name};
-    const { error }  = await supabase.from('staff').update({full_name:updated.full_name,name,role:updated.role,phone:updated.phone,email:updated.email,telegram_chat_id:updated.telegram_chat_id||null,color:updated.color,initials,active:updated.active!==false}).eq('id',editingProfile);
+    const { error }  = await supabase.from('staff').update({full_name:updated.full_name,name,role:updated.role,phone:updated.phone,email:updated.email,color:updated.color,initials,active:updated.active!==false}).eq('id',editingProfile);
     setBusy(false);
     if (error) { setToast('Errore: '+error.message); return; }
     setStaff(prev=>prev.map(s=>s.id===editingProfile?{...s,...updated,initials,name}:s));
@@ -1911,7 +1845,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     setBusy(true);
     const initials  = buildInitials(newDraft.fullName);
     const name      = buildShortName(newDraft.fullName);
-    const { data, error } = await supabase.from('staff').insert({full_name:newDraft.fullName,name,role:newDraft.role,phone:newDraft.phone,email:newDraft.email,telegram_chat_id:newDraft.telegram||null,color:newDraft.color,initials}).select().single();
+    const { data, error } = await supabase.from('staff').insert({full_name:newDraft.fullName,name,role:newDraft.role,phone:newDraft.phone,email:newDraft.email,color:newDraft.color,initials}).select().single();
     if (!error&&data) {
       await supabase.from('staff_schedules').insert({staff_id:data.id, weekly_config:DEFAULT_WEEKLY_CONFIG});
       setStaff(prev=>[...prev,data]);
@@ -1920,7 +1854,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     } else { setToast('Errore: '+(error?.message||'')); }
     setBusy(false);
     setAddingStaff(false);
-    setNewDraft({fullName:'',role:'Barber',phone:'',email:'',telegram:'',color:'oklch(65% 0.14 240)'});
+    setNewDraft({fullName:'',role:'Barber',phone:'',email:'',color:'oklch(65% 0.14 240)'});
   };
 
   const deleteStaff = async (id) => {
@@ -2058,8 +1992,6 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
             <input className="input-field" value={newDraft.phone} onChange={e=>setNewDraft(p=>({...p,phone:e.target.value}))} placeholder="345 000 0000" /></div>
           <div className="input-group"><label className="input-label">Email</label>
             <input className="input-field" type="email" value={newDraft.email} onChange={e=>setNewDraft(p=>({...p,email:e.target.value}))} placeholder="nome@hairstudios.it" /></div>
-          <div className="input-group"><label className="input-label">Telegram Chat ID <span style={{fontWeight:400,color:'var(--ink3)'}}>(per notifiche annullamenti)</span></label>
-            <input className="input-field" inputMode="numeric" value={newDraft.telegram} onChange={e=>setNewDraft(p=>({...p,telegram:e.target.value}))} placeholder="es. 123456789" /></div>
           <div className="input-group"><label className="input-label">Colore avatar</label>
             <div style={{display:'flex',gap:10,marginTop:4}}>
               {COLOR_OPTIONS.map(c=><button key={c.value} onClick={()=>setNewDraft(p=>({...p,color:c.value}))}
@@ -2101,8 +2033,6 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
               <input className="input-field" value={draftProfile.phone||''} onChange={e=>setDraftProfile(p=>({...p,phone:e.target.value}))} placeholder="345 000 0000" /></div>
             <div className="input-group"><label className="input-label">Email</label>
               <input className="input-field" type="email" value={draftProfile.email||''} onChange={e=>setDraftProfile(p=>({...p,email:e.target.value}))} placeholder="nome@hairstudios.it" /></div>
-            <div className="input-group"><label className="input-label">Telegram Chat ID <span style={{fontWeight:400,color:'var(--ink3)'}}>(per notifiche annullamenti)</span></label>
-              <input className="input-field" inputMode="numeric" value={draftProfile.telegram_chat_id||''} onChange={e=>setDraftProfile(p=>({...p,telegram_chat_id:e.target.value}))} placeholder="es. 123456789" /></div>
             <div className="input-group"><label className="input-label">Colore avatar</label>
               <div style={{display:'flex',gap:10,marginTop:4}}>
                 {COLOR_OPTIONS.map(c=><button key={c.value} onClick={()=>setDraftProfile(p=>({...p,color:c.value}))}
