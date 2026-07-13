@@ -52,20 +52,19 @@ Si usa il **bot Telegram già esistente**: non serve crearne uno nuovo.
 
 ---
 
-## 3. Email al cliente: account Resend
+## 3. Email al cliente: Resend (già configurato)
 
-La conferma di annullamento al cliente parte via email tramite
-[Resend](https://resend.com) (3.000 email/mese gratuite).
+La conferma di annullamento al cliente usa lo **stesso account Resend
+già in uso** per le mail di conferma e i promemoria: dominio già
+verificato, nessuna configurazione nuova.
 
-1. Crea un account su **resend.com**.
-2. **Domains → Add Domain** → `hairstudiosbarbershop.com` → aggiungi i
-   record DNS che ti mostra (SPF + DKIM) dal pannello del tuo dominio →
-   attendi la verifica (di solito pochi minuti).
-   - *In alternativa, per provare subito senza verificare il dominio,
-     puoi saltare questo punto: le email partiranno da
-     `onboarding@resend.dev`, ma solo verso l'indirizzo con cui ti sei
-     registrato su Resend. Per l'uso reale il dominio va verificato.*
-3. **API Keys → Create API Key** → copia la chiave (`re_...`).
+Serve solo la **API key** (`re_...`): usa quella esistente oppure
+creane una dedicata (Resend → **API Keys → Create API Key**).
+
+> Se le mail di conferma/promemoria partono già da una Edge Function
+> di Supabase, il secret `RESEND_API_KEY` potrebbe essere già impostato
+> nel progetto (i secrets sono condivisi tra tutte le funzioni):
+> controlla in Edge Functions → Secrets prima di ricrearlo.
 
 ---
 
@@ -80,11 +79,8 @@ La conferma di annullamento al cliente parte via email tramite
    | Nome | Valore |
    |---|---|
    | `TELEGRAM_BOT_TOKEN` | il token del bot esistente (punto 2.1) |
-   | `RESEND_API_KEY` | la chiave `re_...` (punto 3.3) |
-   | `MAIL_FROM` | `Hair Studios <prenotazioni@hairstudiosbarbershop.com>` |
-
-   (se non hai ancora verificato il dominio su Resend, ometti `MAIL_FROM`:
-   verrà usato il mittente di prova di Resend)
+   | `RESEND_API_KEY` | la chiave `re_...` esistente (punto 3) |
+   | `MAIL_FROM` | lo stesso mittente delle mail di conferma, es. `Hair Studios <prenotazioni@hairstudiosbarbershop.com>` |
 
 > In alternativa, con la CLI Supabase:
 > `supabase functions deploy booking-cancelled` +
