@@ -1,4 +1,4 @@
-const CACHE = 'hairstudios-v5';
+const CACHE = 'hairstudios-v6';
 const PRECACHE = ['/'];
 const NETWORK_TIMEOUT = 3000; // ms: oltre questo, su rete lenta si usa la cache
 
