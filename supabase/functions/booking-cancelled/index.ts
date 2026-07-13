@@ -1,20 +1,24 @@
 // ============================================================
 // Hair Studios – Edge Function "booking-cancelled"
-// Invia le email di annullamento: notifica al barbiere e
-// conferma al cliente. Chiamata dal frontend subito dopo
-// la RPC cancel_own_booking.
+// Notifica l'annullamento: messaggio Telegram al barbiere e
+// email di conferma al cliente. Chiamata dal frontend subito
+// dopo la RPC cancel_own_booking.
 //
 // Secrets richiesti (Dashboard → Edge Functions → Secrets):
-//   RESEND_API_KEY  chiave API di https://resend.com
-//   MAIL_FROM       es. "Hair Studios <prenotazioni@hairstudiosbarbershop.com>"
-//                   (il dominio va prima verificato su Resend)
+//   TELEGRAM_BOT_TOKEN  token del bot creato con @BotFather
+//   RESEND_API_KEY      chiave API di https://resend.com
+//   MAIL_FROM           es. "Hair Studios <prenotazioni@hairstudiosbarbershop.com>"
+//                       (il dominio va prima verificato su Resend)
 // SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY sono forniti in automatico.
+// Il chat_id Telegram di ogni barbiere si imposta nell'app
+// (Team → profilo → "Telegram Chat ID").
 // ============================================================
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const TELEGRAM_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN') ?? '';
 const RESEND_KEY   = Deno.env.get('RESEND_API_KEY')!;
 const MAIL_FROM    = Deno.env.get('MAIL_FROM') ?? 'Hair Studios <onboarding@resend.dev>';
 
@@ -36,6 +40,15 @@ async function sendMail(to: string, subject: string, html: string) {
     body: JSON.stringify({ from: MAIL_FROM, to: [to], subject, html }),
   });
   if (!r.ok) console.error(`Resend error (${to}):`, await r.text());
+}
+
+async function sendTelegram(chatId: string, text: string) {
+  const r = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+  });
+  if (!r.ok) console.error(`Telegram error (${chatId}):`, await r.text());
 }
 
 const wrap = (title: string, body: string) => `
@@ -69,7 +82,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: st } = await admin
-      .from('staff').select('name, full_name, email').eq('id', bk.staff_id).single();
+      .from('staff').select('name, full_name, telegram_chat_id').eq('id', bk.staff_id).single();
 
     // date/time sono in ora italiana: la 'Z' + timeZone UTC evitano conversioni
     const quando = new Date(`${bk.date}T${bk.time}Z`).toLocaleString('it-IT', {
@@ -79,21 +92,16 @@ Deno.serve(async (req) => {
 
     const sends: Promise<void>[] = [];
 
-    // 1. Notifica al barbiere
-    if (st?.email) {
-      sends.push(sendMail(
-        st.email,
-        `Prenotazione annullata: ${bk.client_name} – ${quando}`,
-        wrap('Prenotazione annullata da un cliente', `
-          <p style="font-size:15px;line-height:1.6">
-            <strong>${bk.client_name}</strong> ha annullato il suo appuntamento:</p>
-          <table style="font-size:14px;line-height:1.8;border-collapse:collapse">
-            <tr><td style="color:#777;padding-right:16px">Servizio</td><td><strong>${bk.service_name}</strong> (${bk.service_duration} min)</td></tr>
-            <tr><td style="color:#777;padding-right:16px">Quando</td><td><strong>${quando}</strong></td></tr>
-            <tr><td style="color:#777;padding-right:16px">Barbiere</td><td>${st.name}</td></tr>
-          </table>
-          <p style="font-size:14px;margin-top:16px">Lo slot è di nuovo disponibile per altre prenotazioni.</p>
-        `),
+    // 1. Notifica Telegram al barbiere
+    if (TELEGRAM_TOKEN && st?.telegram_chat_id) {
+      sends.push(sendTelegram(
+        st.telegram_chat_id,
+        `❌ <b>Prenotazione annullata</b>\n\n` +
+        `👤 <b>${bk.client_name}</b> ha annullato il suo appuntamento:\n\n` +
+        `✂️ ${bk.service_name} (${bk.service_duration} min)\n` +
+        `📅 ${quando}\n` +
+        `💈 ${st.name}\n\n` +
+        `Lo slot è di nuovo disponibile per altre prenotazioni.`,
       ));
     }
 

@@ -6,10 +6,10 @@ fino a **2 ore prima** dell'appuntamento. La regola è applicata lato server
 
 Quando un cliente annulla:
 - il barbiere vede l'annullamento nella **dashboard** (sezione "Annullate dai clienti") e il calendario si aggiorna in tempo reale;
-- il barbiere riceve una **email di notifica**;
+- il barbiere riceve una **notifica Telegram**;
 - il cliente riceve una **email di conferma annullamento**.
 
-Per attivare tutto servono 3 passaggi.
+Per attivare tutto servono questi passaggi.
 
 ---
 
@@ -18,18 +18,41 @@ Per attivare tutto servono 3 passaggi.
 Supabase → **SQL Editor** → incolla ed esegui tutto il contenuto di
 [`patch_client_cancel.sql`](patch_client_cancel.sql).
 
-Aggiunge le colonne `cancelled_at` / `cancelled_by`, crea la RPC
-`cancel_own_booking` con la regola delle 2 ore e rimuove la vecchia policy.
+Aggiunge le colonne `cancelled_at` / `cancelled_by` alle prenotazioni,
+`telegram_chat_id` allo staff, crea la RPC `cancel_own_booking` con la
+regola delle 2 ore e rimuove la vecchia policy.
 
 > ⚠️ Esegui la patch **prima** di mettere online il nuovo `index.html`:
 > il pulsante "Annulla" del frontend aggiornato usa la RPC.
 
 ---
 
-## 2. Email: account Resend (per notifica barbiere + conferma cliente)
+## 2. Notifica Telegram al barbiere
 
-Le email partono da una Edge Function tramite [Resend](https://resend.com)
-(3.000 email/mese gratuite, più che sufficienti).
+1. **Crea il bot**: su Telegram apri **@BotFather** → `/newbot` →
+   dagli un nome (es. *Hair Studios Notifiche*) e uno username
+   (es. `HairStudiosBot`). BotFather ti dà il **token**
+   (formato `123456:ABC-...`): copialo, serve al punto 4.
+2. **Ogni barbiere avvia il bot**: Antonio e Giuseppe cercano il bot su
+   Telegram e premono **Avvia** (`/start`). Senza questo passaggio il bot
+   non può scrivergli (limite di Telegram).
+3. **Recupera il chat_id di ciascuno**: il modo più semplice è che ogni
+   barbiere scriva a **@userinfobot** su Telegram, che risponde con il
+   proprio `Id` (un numero, es. `123456789`).
+   - *Alternativa: dopo che il barbiere ha scritto `/start` al tuo bot,
+     apri nel browser `https://api.telegram.org/bot<TOKEN>/getUpdates`
+     e leggi `message.chat.id`.*
+4. **Inserisci i chat_id nell'app**: account admin → **Team** →
+   profilo del barbiere → campo **"Telegram Chat ID"** → salva.
+   Senza chat_id la notifica Telegram per quel barbiere non parte
+   (l'email al cliente parte comunque).
+
+---
+
+## 3. Email al cliente: account Resend
+
+La conferma di annullamento al cliente parte via email tramite
+[Resend](https://resend.com) (3.000 email/mese gratuite).
 
 1. Crea un account su **resend.com**.
 2. **Domains → Add Domain** → `hairstudiosbarbershop.com` → aggiungi i
@@ -41,7 +64,9 @@ Le email partono da una Edge Function tramite [Resend](https://resend.com)
      registrato su Resend. Per l'uso reale il dominio va verificato.*
 3. **API Keys → Create API Key** → copia la chiave (`re_...`).
 
-## 3. Edge Function su Supabase
+---
+
+## 4. Edge Function su Supabase
 
 1. Dashboard Supabase → **Edge Functions → Deploy a new function →
    Via Editor** → nome: `booking-cancelled`.
@@ -51,24 +76,16 @@ Le email partono da una Edge Function tramite [Resend](https://resend.com)
 3. **Edge Functions → Secrets** → aggiungi:
    | Nome | Valore |
    |---|---|
-   | `RESEND_API_KEY` | la chiave `re_...` del punto 2 |
+   | `TELEGRAM_BOT_TOKEN` | il token del bot (punto 2.1) |
+   | `RESEND_API_KEY` | la chiave `re_...` (punto 3.3) |
    | `MAIL_FROM` | `Hair Studios <prenotazioni@hairstudiosbarbershop.com>` |
 
-   (se non hai ancora verificato il dominio, ometti `MAIL_FROM`:
+   (se non hai ancora verificato il dominio su Resend, ometti `MAIL_FROM`:
    verrà usato il mittente di prova di Resend)
 
 > In alternativa, con la CLI Supabase:
 > `supabase functions deploy booking-cancelled` +
-> `supabase secrets set RESEND_API_KEY=re_... MAIL_FROM="Hair Studios <prenotazioni@hairstudiosbarbershop.com>"`
-
----
-
-## 4. Email dei barbieri nell'app
-
-La notifica al barbiere viene inviata all'indirizzo salvato nel suo
-profilo staff: app → account admin → **Team** → profilo del barbiere →
-campo **Email**. Controlla che sia compilato per Antonio e Giuseppe,
-altrimenti la notifica al barbiere non parte (quella al cliente sì).
+> `supabase secrets set TELEGRAM_BOT_TOKEN=... RESEND_API_KEY=re_... MAIL_FROM="Hair Studios <prenotazioni@hairstudiosbarbershop.com>"`
 
 ---
 
@@ -78,6 +95,7 @@ altrimenti la notifica al barbiere non parte (quella al cliente sì).
 2. Da un account cliente: prenota, fatti confermare la prenotazione,
    poi annullala da "Le mie prenotazioni" (doppia conferma "Sì, annulla").
 3. Controlla: toast "Prenotazione annullata", sezione "Annullate dai
-   clienti" nella dashboard admin, email al barbiere ed email al cliente.
+   clienti" nella dashboard admin, messaggio Telegram al barbiere
+   ed email di conferma al cliente.
 4. Prova con un appuntamento a meno di 2 ore: il pulsante non compare
    e compare "Annullabile fino a 2h prima".

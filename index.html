@@ -1875,7 +1875,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
   const [draftSchedule, setDraftSched]  = useState(null);
   const [scheduleSection, setScheduleSection] = useState('menu'); // menu | weekly | blocks | overrides
   const [addingStaff, setAddingStaff]   = useState(false);
-  const [newDraft, setNewDraft]         = useState({fullName:'',role:'Barber',phone:'',email:'',color:'oklch(65% 0.14 240)'});
+  const [newDraft, setNewDraft]         = useState({fullName:'',role:'Barber',phone:'',email:'',telegram:'',color:'oklch(65% 0.14 240)'});
   const [editingService, setEditSvc]    = useState(null);
   const [draftService, setDraftService] = useState(null);
   const [addingBlock, setAddingBlock]   = useState(null);
@@ -1899,7 +1899,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     const initials   = buildInitials(draftProfile.full_name);
     const name       = buildShortName(draftProfile.full_name);
     const updated    = {...draftProfile, initials, name};
-    const { error }  = await supabase.from('staff').update({full_name:updated.full_name,name,role:updated.role,phone:updated.phone,email:updated.email,color:updated.color,initials,active:updated.active!==false}).eq('id',editingProfile);
+    const { error }  = await supabase.from('staff').update({full_name:updated.full_name,name,role:updated.role,phone:updated.phone,email:updated.email,telegram_chat_id:updated.telegram_chat_id||null,color:updated.color,initials,active:updated.active!==false}).eq('id',editingProfile);
     setBusy(false);
     if (error) { setToast('Errore: '+error.message); return; }
     setStaff(prev=>prev.map(s=>s.id===editingProfile?{...s,...updated,initials,name}:s));
@@ -1911,7 +1911,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     setBusy(true);
     const initials  = buildInitials(newDraft.fullName);
     const name      = buildShortName(newDraft.fullName);
-    const { data, error } = await supabase.from('staff').insert({full_name:newDraft.fullName,name,role:newDraft.role,phone:newDraft.phone,email:newDraft.email,color:newDraft.color,initials}).select().single();
+    const { data, error } = await supabase.from('staff').insert({full_name:newDraft.fullName,name,role:newDraft.role,phone:newDraft.phone,email:newDraft.email,telegram_chat_id:newDraft.telegram||null,color:newDraft.color,initials}).select().single();
     if (!error&&data) {
       await supabase.from('staff_schedules').insert({staff_id:data.id, weekly_config:DEFAULT_WEEKLY_CONFIG});
       setStaff(prev=>[...prev,data]);
@@ -1920,7 +1920,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
     } else { setToast('Errore: '+(error?.message||'')); }
     setBusy(false);
     setAddingStaff(false);
-    setNewDraft({fullName:'',role:'Barber',phone:'',email:'',color:'oklch(65% 0.14 240)'});
+    setNewDraft({fullName:'',role:'Barber',phone:'',email:'',telegram:'',color:'oklch(65% 0.14 240)'});
   };
 
   const deleteStaff = async (id) => {
@@ -2058,6 +2058,8 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
             <input className="input-field" value={newDraft.phone} onChange={e=>setNewDraft(p=>({...p,phone:e.target.value}))} placeholder="345 000 0000" /></div>
           <div className="input-group"><label className="input-label">Email</label>
             <input className="input-field" type="email" value={newDraft.email} onChange={e=>setNewDraft(p=>({...p,email:e.target.value}))} placeholder="nome@hairstudios.it" /></div>
+          <div className="input-group"><label className="input-label">Telegram Chat ID <span style={{fontWeight:400,color:'var(--ink3)'}}>(per notifiche annullamenti)</span></label>
+            <input className="input-field" inputMode="numeric" value={newDraft.telegram} onChange={e=>setNewDraft(p=>({...p,telegram:e.target.value}))} placeholder="es. 123456789" /></div>
           <div className="input-group"><label className="input-label">Colore avatar</label>
             <div style={{display:'flex',gap:10,marginTop:4}}>
               {COLOR_OPTIONS.map(c=><button key={c.value} onClick={()=>setNewDraft(p=>({...p,color:c.value}))}
@@ -2099,6 +2101,8 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
               <input className="input-field" value={draftProfile.phone||''} onChange={e=>setDraftProfile(p=>({...p,phone:e.target.value}))} placeholder="345 000 0000" /></div>
             <div className="input-group"><label className="input-label">Email</label>
               <input className="input-field" type="email" value={draftProfile.email||''} onChange={e=>setDraftProfile(p=>({...p,email:e.target.value}))} placeholder="nome@hairstudios.it" /></div>
+            <div className="input-group"><label className="input-label">Telegram Chat ID <span style={{fontWeight:400,color:'var(--ink3)'}}>(per notifiche annullamenti)</span></label>
+              <input className="input-field" inputMode="numeric" value={draftProfile.telegram_chat_id||''} onChange={e=>setDraftProfile(p=>({...p,telegram_chat_id:e.target.value}))} placeholder="es. 123456789" /></div>
             <div className="input-group"><label className="input-label">Colore avatar</label>
               <div style={{display:'flex',gap:10,marginTop:4}}>
                 {COLOR_OPTIONS.map(c=><button key={c.value} onClick={()=>setDraftProfile(p=>({...p,color:c.value}))}

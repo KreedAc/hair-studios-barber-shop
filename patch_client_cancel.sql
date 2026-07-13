@@ -11,6 +11,11 @@ ALTER TABLE public.bookings
   ADD COLUMN IF NOT EXISTS cancelled_by TEXT
     CHECK (cancelled_by IN ('client','staff'));
 
+-- 1b. Chat ID Telegram del barbiere (per la notifica di annullamento).
+--     Si imposta dall'app: Team → profilo barbiere → "Telegram Chat ID".
+ALTER TABLE public.staff
+  ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT;
+
 -- 2. RPC di annullamento lato cliente.
 --    La regola delle 2 ore è verificata QUI, lato server:
 --    anche chiamando l'API a mano non si può aggirare.
