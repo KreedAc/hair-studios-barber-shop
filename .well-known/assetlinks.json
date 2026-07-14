@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.hairstudiosbarbershop.twa",
+        "sha256_cert_fingerprints": ["C9:E9:1A:44:8A:11:A1:18:0F:7C:E8:9B:A8:A3:6B:6B:54:05:10:C7:F1:53:E0:2E:A8:71:A9:77:07:47:0C:7C"]
+      }
+    }]
