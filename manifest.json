@@ -27,6 +27,36 @@
     }
   ],
   "categories": ["lifestyle", "health"],
+  "screenshots": [
+    {
+      "src": "screenshot-1.jpg",
+      "sizes": "1200x2485",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Home con la prossima prenotazione"
+    },
+    {
+      "src": "screenshot-2.jpg",
+      "sizes": "1200x2485",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Scelta dei servizi"
+    },
+    {
+      "src": "screenshot-3.jpg",
+      "sizes": "1200x2485",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Riepilogo e conferma della prenotazione"
+    },
+    {
+      "src": "screenshot-4.jpg",
+      "sizes": "1200x2485",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Accesso e registrazione"
+    }
+  ],
   "shortcuts": [
     {
       "name": "Prenota un appuntamento",
