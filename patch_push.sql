@@ -54,7 +54,7 @@ ALTER TABLE public.bookings
 --           BETWEEN now() AND now() + interval '24 hours'
 --   LOOP
 --     PERFORM net.http_post(
---       url     := 'https://<PROJECT_REF>.supabase.co/functions/v1/send-push',
+--       url     := 'https://pzdnvygxnosmxrjfjvsv.supabase.co/functions/v1/send-push',
 --       headers := jsonb_build_object(
 --         'Content-Type','application/json',
 --         'Authorization','Bearer <SERVICE_ROLE_KEY>'
