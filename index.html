@@ -979,6 +979,13 @@ function UserProfile({ profile, bookings, onLogout }) {
 
   const logout = async () => { await supabase.auth.signOut(); onLogout(); };
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const requestDelete = () => {
+    const msg = `Salve, richiedo l'eliminazione del mio account dall'app Hair Studios. La mia email di registrazione è: ${profile.email||''}`;
+    window.open(`https://wa.me/393934256411?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+    setConfirmDelete(false);
+  };
+
   return (
     <div className="screen">
       <div className="scroll-content" style={{padding:'env(safe-area-inset-top,16px) 24px 24px',paddingTop:24}}>
@@ -1032,6 +1039,38 @@ function UserProfile({ profile, bookings, onLogout }) {
         </div>
 
         <button className="btn-secondary" onClick={logout}>Esci dall'account</button>
+
+        <div style={{marginTop:20,paddingTop:16,borderTop:'1px solid var(--border)'}}>
+          {!confirmDelete ? (
+            <button onClick={()=>setConfirmDelete(true)}
+              style={{width:'100%',padding:'12px',borderRadius:'var(--radius-sm)',border:'1px solid oklch(88% 0.05 25)',
+                background:'transparent',color:'oklch(50% 0.18 25)',fontSize:13,fontWeight:600,fontFamily:"'Jost',sans-serif"}}>
+              Elimina account
+            </button>
+          ) : (
+            <div style={{background:'oklch(98% 0.02 25)',border:'1px solid oklch(90% 0.04 25)',borderRadius:'var(--radius-sm)',padding:16}}>
+              <p style={{fontSize:13,color:'var(--ink2)',lineHeight:1.5,marginBottom:12}}>
+                Verranno eliminati account, dati personali e storico prenotazioni entro 30 giorni.
+                Per procedere invii la richiesta con la sua email di registrazione.
+              </p>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>setConfirmDelete(false)}
+                  style={{flex:1,padding:'10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg)',color:'var(--ink2)',fontSize:13,fontWeight:600}}>
+                  Annulla
+                </button>
+                <button onClick={requestDelete}
+                  style={{flex:1,padding:'10px',borderRadius:8,border:'none',background:'oklch(50% 0.18 25)',color:'white',fontSize:13,fontWeight:700}}>
+                  Invia richiesta
+                </button>
+              </div>
+            </div>
+          )}
+          <p style={{fontSize:11,color:'var(--ink3)',textAlign:'center',marginTop:10}}>
+            <a href="/elimina-account.html" target="_blank" rel="noopener noreferrer" style={{color:'var(--ink3)',textDecoration:'underline'}}>
+              Come funziona l'eliminazione dell'account
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   );
