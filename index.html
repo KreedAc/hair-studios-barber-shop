@@ -2641,7 +2641,12 @@ function App() {
 
   useEffect(() => {
     if (profile) {
-      setTab(profile.is_admin ? 'admin-dash' : 'home');
+      // Scorciatoie del manifest (pressione lunga sull'icona dell'app)
+      const shortcut = new URLSearchParams(window.location.search).get('shortcut');
+      if (!profile.is_admin && shortcut === 'prenota')            setTab('booking');
+      else if (!profile.is_admin && shortcut === 'prenotazioni')  setTab('calendar');
+      else setTab(profile.is_admin ? 'admin-dash' : 'home');
+      if (shortcut) window.history.replaceState({}, '', '/');
       loadAppData();
     }
   }, [profile?.id]);
