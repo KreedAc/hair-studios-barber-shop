@@ -2698,6 +2698,29 @@ function InstallBanner({ type, onInstall, onDismiss }) {
   );
 }
 
+function NotifBanner({ onEnable, onDismiss }) {
+  return (
+    <div style={{position:'fixed',bottom:80,left:16,right:16,zIndex:200,
+      background:'var(--ink)',borderRadius:16,padding:'14px 16px',
+      boxShadow:'0 8px 32px rgba(0,0,0,0.35)',display:'flex',alignItems:'center',gap:12,
+      animation:'slideUp 0.3s ease'}}>
+      <div style={{width:40,height:40,borderRadius:10,flexShrink:0,background:'var(--gold)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>🔔</div>
+      <div style={{flex:1,minWidth:0}}>
+        <p style={{fontSize:13,fontWeight:700,color:'white',marginBottom:2}}>Attiva le notifiche</p>
+        <p style={{fontSize:11,color:'rgba(255,255,255,0.6)',lineHeight:1.4}}>Ricevi conferme e promemoria dei tuoi appuntamenti</p>
+      </div>
+      <button onClick={onEnable}
+        style={{background:'white',color:'var(--ink)',border:'none',borderRadius:8,
+          padding:'8px 14px',fontSize:12,fontWeight:700,flexShrink:0,cursor:'pointer'}}>
+        Attiva
+      </button>
+      <button onClick={onDismiss} aria-label="Chiudi banner"
+        style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',
+          fontSize:18,cursor:'pointer',padding:'0 0 0 4px',flexShrink:0,lineHeight:1}}>✕</button>
+    </div>
+  );
+}
+
 // ── ROOT APP ─────────────────────────────────────────────────────
 function App() {
   const [authUser, setAuthUser]   = useState(null);
@@ -2715,6 +2738,7 @@ function App() {
   const [toast, setToast]         = useState(null);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showInstall, setShowInstall]     = useState(null); // null | 'android' | 'ios'
+  const [showNotif, setShowNotif]         = useState(false); // prompt notifiche una tantum
 
   // Gestione install banner PWA
   useEffect(() => {
@@ -2753,6 +2777,27 @@ function App() {
   const handleDismissInstall = () => {
     setShowInstall(null);
     localStorage.setItem('installDismissed', String(Date.now()));
+  };
+
+  // Prompt notifiche una tantum: dopo il login, se supportate e mai chieste
+  useEffect(() => {
+    if (!profile) return;
+    if (!pushSupported() || Notification.permission !== 'default') return;
+    if (localStorage.getItem('notifPromptSeen')) return;
+    const t = setTimeout(() => setShowNotif(true), 6000);
+    return () => clearTimeout(t);
+  }, [profile?.id]);
+
+  const handleEnableNotif = async () => {
+    localStorage.setItem('notifPromptSeen', '1');
+    setShowNotif(false);
+    const res = await subscribeToPush(profile.id);
+    if (res === 'granted') setToast('🔔 Notifiche attivate');
+  };
+
+  const handleDismissNotif = () => {
+    setShowNotif(false);
+    localStorage.setItem('notifPromptSeen', '1');
   };
 
   // Controlla sessione all'avvio
@@ -2910,6 +2955,7 @@ function App() {
       </div>
       <BottomNav tab={tab} setTab={setTab} isAdmin={isAdmin} onRefresh={loadAppData} />
       {showInstall && <InstallBanner type={showInstall} onInstall={handleInstall} onDismiss={handleDismissInstall} />}
+      {showNotif && !showInstall && <NotifBanner onEnable={handleEnableNotif} onDismiss={handleDismissNotif} />}
       {toast && <Toast message={toast} onDone={()=>setToast(null)} />}
     </div>
   );
