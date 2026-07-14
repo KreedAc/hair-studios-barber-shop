@@ -256,6 +256,96 @@ const supabase = CONFIG_READY
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
+// ── NOTIFICHE PUSH ──────────────────────────────────────────────
+// Chiave pubblica VAPID (sicura da esporre). La privata sta nei secret
+// della Edge Function send-push.
+const VAPID_PUBLIC_KEY = 'BFgyuGerCg0mB8L9QbHQUFFhBr2BCRbIO2RTpLHqf3qbGHccrRNEGR3tE-cTu8aZI7bpEtNIkhTb0kLWjxBGEHU';
+
+const pushSupported = () =>
+  typeof Notification !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window;
+
+const urlBase64ToUint8Array = (base64String) => {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+};
+
+// Chiede il permesso (su iPhone va invocata da un gesto utente) e salva
+// l'iscrizione su Supabase. Ritorna lo stato risultante.
+const subscribeToPush = async (userId) => {
+  try {
+    if (!pushSupported() || !supabase) return 'unsupported';
+    if (Notification.permission === 'denied') return 'denied';
+    const perm = Notification.permission === 'granted'
+      ? 'granted' : await Notification.requestPermission();
+    if (perm !== 'granted') return perm;
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+    const json = sub.toJSON();
+    await supabase.from('push_subscriptions').upsert({
+      user_id: userId,
+      endpoint: sub.endpoint,
+      p256dh: json.keys.p256dh,
+      auth: json.keys.auth,
+    }, { onConflict: 'endpoint' });
+    return 'granted';
+  } catch (e) { console.error('push subscribe:', e); return 'error'; }
+};
+
+// Invia una notifica tramite la Edge Function (best-effort, non blocca l'azione)
+const notifyPush = (bookingId, event) => {
+  if (!bookingId || !supabase) return;
+  supabase.functions.invoke('send-push', { body: { booking_id: bookingId, event } }).catch(() => {});
+};
+
+// Pulsante riutilizzabile per attivare le notifiche (schermate profilo)
+function NotificationButton({ userId }) {
+  const [state, setState] = useState(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission);
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+  const box = { marginBottom:16, padding:'14px 16px', borderRadius:'var(--radius-sm)', border:'1px solid var(--border)', background:'var(--bg2)' };
+
+  if (!pushSupported()) {
+    if (isIOS && !isStandalone) {
+      return (
+        <div style={box}>
+          <p style={{fontSize:13,fontWeight:600,color:'var(--ink)',marginBottom:4}}>🔔 Attiva le notifiche</p>
+          <p style={{fontSize:12,color:'var(--ink3)',lineHeight:1.5}}>
+            Per riceverle su iPhone, aggiungi prima l'app alla schermata Home: tocca <strong>Condividi</strong> → <strong>Aggiungi a Home</strong>, poi apri l'app da lì.
+          </p>
+        </div>
+      );
+    }
+    return null;
+  }
+  if (state === 'granted') {
+    return <div style={box}><p style={{fontSize:13,fontWeight:600,color:'oklch(45% 0.14 145)'}}>🔔 Notifiche attive</p></div>;
+  }
+  if (state === 'denied') {
+    return (
+      <div style={box}>
+        <p style={{fontSize:13,fontWeight:600,color:'var(--ink)',marginBottom:4}}>🔕 Notifiche bloccate</p>
+        <p style={{fontSize:12,color:'var(--ink3)',lineHeight:1.5}}>Le hai disattivate. Per riattivarle, abilita le notifiche per questa app dalle impostazioni del telefono.</p>
+      </div>
+    );
+  }
+  return (
+    <button onClick={async () => setState(await subscribeToPush(userId))}
+      style={{...box, width:'100%', cursor:'pointer', textAlign:'left', background:'var(--gold-bg)', borderColor:'var(--gold-dim)'}}>
+      <p style={{fontSize:13,fontWeight:700,color:'var(--gold)',marginBottom:2}}>🔔 Attiva le notifiche</p>
+      <p style={{fontSize:12,color:'var(--ink3)'}}>Ricevi conferme e promemoria dei tuoi appuntamenti</p>
+    </button>
+  );
+}
+
 // ── COSTANTI ────────────────────────────────────────────────────
 const DAYS_SHORT = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
 const MONTHS     = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
@@ -655,7 +745,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
     if (!selectedStaff||!date||!time||!selectedServices.length) return;
     setBusy(true);
     const combinedName = selectedServices.map(s=>s.name).join(' + ');
-    const { error } = await supabase.from('bookings').insert({
+    const { data, error } = await supabase.from('bookings').insert({
       user_id:          profile.id,
       staff_id:         selectedStaff.id,
       service_id:       selectedServices.length===1 ? selectedServices[0].id : null,
@@ -665,13 +755,14 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
       date, time,
       status: 'pending',
       notes: bookingNotes || null,
-    });
+    }).select('id').single();
     setBusy(false);
     if (error) {
       setToast(error.code==='23505' ? '⚠️ Slot appena occupato, scegli un altro orario' : 'Errore: ' + error.message);
       if (error.code==='23505') { setTime(null); setDate(null); setStep(2); onBooked(); }
       return;
     }
+    notifyPush(data?.id, 'new_booking');
     setToast('✓ Prenotazione inviata!');
     setStep(0); setSel([]); setSelectedStaff(null); setDate(null); setTime(null); setBookingNotes('');
     onBooked();
@@ -889,6 +980,7 @@ function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
   const cancel = async (id) => {
     const { error } = await supabase.from('bookings').update({ status:'cancelled' }).eq('id',id);
     if (error) { setToast('Errore: '+error.message); return; }
+    notifyPush(id, 'cancelled_by_client');
     setToast('Prenotazione annullata');
     onRefresh();
   };
@@ -1006,6 +1098,8 @@ function UserProfile({ profile, bookings, onLogout }) {
           ))}
         </div>
 
+        <NotificationButton userId={profile.id} />
+
         <div className="card" style={{marginBottom:16}}>
           <p style={{fontSize:12,fontWeight:600,color:'var(--ink2)',textTransform:'uppercase',letterSpacing:0.5,marginBottom:14}}>Informazioni Personali</p>
           {[['Nome',profile.name],['Email',profile.email||'—'],['Telefono',profile.phone||'—']].map(([k,v])=>(
@@ -1101,6 +1195,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
     const { error } = await supabase.from('bookings').update({ date:dateStr, time:newTime, staff_id:newStaff, status:'confirmed', reminder_sent:false }).eq('id',booking.id);
     setBusy(false);
     if (error) { setToast && setToast('Errore: '+error.message); return; }
+    notifyPush(booking.id, 'moved');
     onSave();
   };
 
@@ -1109,6 +1204,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
     const { error } = await supabase.from('bookings').update({ status:'cancelled' }).eq('id',booking.id);
     setBusy(false);
     if (error) { setToast && setToast('Errore: '+error.message); return; }
+    notifyPush(booking.id, 'cancelled_by_staff');
     onSave();
   };
 
@@ -1562,10 +1658,12 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
     }
     const { error } = await supabase.from('bookings').update({status:'confirmed'}).eq('id',id);
     if (error) { setToast('Errore: '+error.message); return; }
+    notifyPush(id, 'confirmed');
     setToast('✓ Prenotazione accettata'); onRefresh();
   };
   const reject = async (id) => {
     await supabase.from('bookings').update({status:'cancelled'}).eq('id',id);
+    notifyPush(id, 'cancelled_by_staff');
     setToast('Prenotazione rifiutata'); onRefresh();
   };
 
@@ -2486,6 +2584,7 @@ function AdminAccount({ profile, onLogout }) {
           <p style={{fontSize:13,color:'var(--ink3)',marginTop:4}}>{profile.email||''}</p>
           <span className="badge badge-gold" style={{marginTop:8}}>Admin</span>
         </div>
+        <NotificationButton userId={profile.id} />
         <div className="card" style={{marginBottom:16}}>
           {[['Email', profile.email||'—'],['Telefono', profile.phone||'—']].map(([k,v])=>(
             <div key={k}>
@@ -2689,6 +2788,8 @@ function App() {
       else setTab(profile.is_admin ? 'admin-dash' : 'home');
       if (shortcut) window.history.replaceState({}, '', '/');
       loadAppData();
+      // Se il permesso notifiche è già concesso, riallinea l'iscrizione (silenzioso)
+      if (pushSupported() && Notification.permission === 'granted') subscribeToPush(profile.id);
     }
   }, [profile?.id]);
 
