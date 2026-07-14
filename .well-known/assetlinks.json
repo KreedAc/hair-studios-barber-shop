@@ -3,6 +3,9 @@
       "target": {
         "namespace": "android_app",
         "package_name": "com.hairstudiosbarbershop.twa",
-        "sha256_cert_fingerprints": ["C9:E9:1A:44:8A:11:A1:18:0F:7C:E8:9B:A8:A3:6B:6B:54:05:10:C7:F1:53:E0:2E:A8:71:A9:77:07:47:0C:7C"]
+        "sha256_cert_fingerprints": [
+          "C9:E9:1A:44:8A:11:A1:18:0F:7C:E8:9B:A8:A3:6B:6B:54:05:10:C7:F1:53:E0:2E:A8:71:A9:77:07:47:0C:7C",
+          "6E:18:7D:6B:EC:4B:4C:43:62:62:E6:80:6F:29:D9:34:65:EF:DC:34:5F:DB:8E:6D:36:95:F2:9E:BD:DD:03:40"
+        ]
       }
     }]
