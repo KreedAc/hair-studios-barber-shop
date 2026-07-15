@@ -375,12 +375,8 @@ function NotificationButton({ userId }) {
     return (
       <div style={box}>
         <p style={{fontSize:13,fontWeight:600,color:'oklch(45% 0.14 145)'}}>🔔 Notifiche attive</p>
-        {(isTWA || AGGRESSIVE_OEM) && (
-          <>
-            <p onClick={()=>setShowHelp(true)} style={{fontSize:11.5,color:'var(--ink3)',marginTop:6,textDecoration:'underline',cursor:'pointer'}}>Non le ricevi? Come sistemarle</p>
-            {showHelp && <NotifHelpModal onClose={()=>setShowHelp(false)} />}
-          </>
-        )}
+        <p onClick={()=>setShowHelp(true)} style={{fontSize:11.5,color:'var(--ink3)',marginTop:6,textDecoration:'underline',cursor:'pointer'}}>Non le ricevi? Come sistemarle</p>
+        {showHelp && <NotifHelpModal onClose={()=>setShowHelp(false)} />}
       </div>
     );
   }
