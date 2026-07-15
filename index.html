@@ -305,11 +305,56 @@ const notifyPush = (bookingId, event) => {
   supabase.functions.invoke('send-push', { body: { booking_id: bookingId, event } }).catch(() => {});
 };
 
+// Marche Android note per spegnere notifiche/permessi in background
+const AGGRESSIVE_OEM = /xiaomi|redmi|poco|hyperos|miui|huawei|honor|oppo|realme|vivo|oneplus|iqoo|infinix|tecno/i.test(navigator.userAgent);
+const isTWA = document.referrer.startsWith('android-app://');
+
+// Guida per attivare (e non far spegnere) le notifiche
+function NotifHelpModal({ onClose }) {
+  return (
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:'var(--bg)',borderTopLeftRadius:20,borderTopRightRadius:20,padding:'24px 22px calc(24px + env(safe-area-inset-bottom,0px))',width:'100%',maxWidth:480,animation:'slideUp 0.3s ease'}}>
+        <div style={{width:36,height:4,borderRadius:99,background:'var(--border)',margin:'0 auto 18px'}}></div>
+        <h3 style={{fontSize:20,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)',marginBottom:6}}>Come attivare le notifiche</h3>
+        <p style={{fontSize:13,color:'var(--ink3)',lineHeight:1.6,marginBottom:16}}>Se non le ricevi, è il telefono che le sta bloccando. Bastano questi passaggi:</p>
+
+        <div style={{display:'flex',gap:12,marginBottom:14}}>
+          <div style={{width:26,height:26,borderRadius:'50%',background:'var(--ink)',color:'white',fontSize:13,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>1</div>
+          <div>
+            <p style={{fontSize:14,fontWeight:600,color:'var(--ink)',marginBottom:2}}>Consenti le notifiche</p>
+            <p style={{fontSize:12.5,color:'var(--ink3)',lineHeight:1.55}}>Tieni premuta l'icona dell'app → <strong>Informazioni app</strong> → <strong>Notifiche</strong> → attiva. (Oppure: Impostazioni telefono → App → Hair Studios → Notifiche.)</p>
+          </div>
+        </div>
+
+        {AGGRESSIVE_OEM && (
+          <div style={{display:'flex',gap:12,marginBottom:14}}>
+            <div style={{width:26,height:26,borderRadius:'50%',background:'var(--ink)',color:'white',fontSize:13,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>2</div>
+            <div>
+              <p style={{fontSize:14,fontWeight:600,color:'var(--ink)',marginBottom:2}}>Impedisci lo spegnimento automatico</p>
+              <p style={{fontSize:12.5,color:'var(--ink3)',lineHeight:1.55}}>Nella stessa pagina disattiva <strong>“Gestisci l'app se inutilizzata”</strong> e togli l'ottimizzazione della batteria per Hair Studios. Il tuo telefono, per risparmiare batteria, spegne le notifiche da solo — questo passaggio lo impedisce.</p>
+            </div>
+          </div>
+        )}
+
+        <button onClick={onClose} className="btn-primary" style={{marginTop:8}}>Ho capito</button>
+      </div>
+    </div>
+  );
+}
+
 // Pulsante riutilizzabile per attivare le notifiche (schermate profilo)
 function NotificationButton({ userId }) {
   const [state, setState] = useState(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission);
+  const [showHelp, setShowHelp] = useState(false);
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+  const activate = async () => {
+    const res = await subscribeToPush(userId);
+    setState(res);
+    // Se non è andato a buon fine (permesso negato/bloccato dal telefono), guida l'utente
+    if (res !== 'granted') setShowHelp(true);
+  };
 
   const box = { marginBottom:16, padding:'14px 16px', borderRadius:'var(--radius-sm)', border:'1px solid var(--border)', background:'var(--bg2)' };
 
@@ -327,22 +372,37 @@ function NotificationButton({ userId }) {
     return null;
   }
   if (state === 'granted') {
-    return <div style={box}><p style={{fontSize:13,fontWeight:600,color:'oklch(45% 0.14 145)'}}>🔔 Notifiche attive</p></div>;
+    return (
+      <div style={box}>
+        <p style={{fontSize:13,fontWeight:600,color:'oklch(45% 0.14 145)'}}>🔔 Notifiche attive</p>
+        {(isTWA || AGGRESSIVE_OEM) && (
+          <>
+            <p onClick={()=>setShowHelp(true)} style={{fontSize:11.5,color:'var(--ink3)',marginTop:6,textDecoration:'underline',cursor:'pointer'}}>Non le ricevi? Come sistemarle</p>
+            {showHelp && <NotifHelpModal onClose={()=>setShowHelp(false)} />}
+          </>
+        )}
+      </div>
+    );
   }
   if (state === 'denied') {
     return (
       <div style={box}>
         <p style={{fontSize:13,fontWeight:600,color:'var(--ink)',marginBottom:4}}>🔕 Notifiche bloccate</p>
-        <p style={{fontSize:12,color:'var(--ink3)',lineHeight:1.5}}>Le hai disattivate. Per riattivarle, abilita le notifiche per questa app dalle impostazioni del telefono.</p>
+        <p style={{fontSize:12,color:'var(--ink3)',lineHeight:1.5,marginBottom:10}}>Il telefono le sta bloccando per questa app.</p>
+        <button onClick={()=>setShowHelp(true)} style={{fontSize:12,fontWeight:700,color:'var(--gold)',background:'var(--gold-bg)',border:'1px solid var(--gold-dim)',borderRadius:8,padding:'8px 14px',cursor:'pointer'}}>Come attivarle</button>
+        {showHelp && <NotifHelpModal onClose={()=>setShowHelp(false)} />}
       </div>
     );
   }
   return (
-    <button onClick={async () => setState(await subscribeToPush(userId))}
-      style={{...box, width:'100%', cursor:'pointer', textAlign:'left', background:'var(--gold-bg)', borderColor:'var(--gold-dim)'}}>
-      <p style={{fontSize:13,fontWeight:700,color:'var(--gold)',marginBottom:2}}>🔔 Attiva le notifiche</p>
-      <p style={{fontSize:12,color:'var(--ink3)'}}>Ricevi conferme e promemoria dei tuoi appuntamenti</p>
-    </button>
+    <>
+      <button onClick={activate}
+        style={{...box, width:'100%', cursor:'pointer', textAlign:'left', background:'var(--gold-bg)', borderColor:'var(--gold-dim)'}}>
+        <p style={{fontSize:13,fontWeight:700,color:'var(--gold)',marginBottom:2}}>🔔 Attiva le notifiche</p>
+        <p style={{fontSize:12,color:'var(--ink3)'}}>Ricevi conferme e promemoria dei tuoi appuntamenti</p>
+      </button>
+      {showHelp && <NotifHelpModal onClose={()=>setShowHelp(false)} />}
+    </>
   );
 }
 
@@ -2739,6 +2799,7 @@ function App() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showInstall, setShowInstall]     = useState(null); // null | 'android' | 'ios'
   const [showNotif, setShowNotif]         = useState(false); // prompt notifiche una tantum
+  const [showNotifHelp, setShowNotifHelp] = useState(false); // guida attivazione notifiche
 
   // Gestione install banner PWA
   useEffect(() => {
@@ -2793,6 +2854,7 @@ function App() {
     setShowNotif(false);
     const res = await subscribeToPush(profile.id);
     if (res === 'granted') setToast('🔔 Notifiche attivate');
+    else setShowNotifHelp(true); // il telefono le blocca: guida l'utente
   };
 
   const handleDismissNotif = () => {
@@ -2956,6 +3018,7 @@ function App() {
       <BottomNav tab={tab} setTab={setTab} isAdmin={isAdmin} onRefresh={loadAppData} />
       {showInstall && <InstallBanner type={showInstall} onInstall={handleInstall} onDismiss={handleDismissInstall} />}
       {showNotif && !showInstall && <NotifBanner onEnable={handleEnableNotif} onDismiss={handleDismissNotif} />}
+      {showNotifHelp && <NotifHelpModal onClose={()=>setShowNotifHelp(false)} />}
       {toast && <Toast message={toast} onDone={()=>setToast(null)} />}
     </div>
   );
