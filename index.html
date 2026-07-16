@@ -3066,7 +3066,8 @@ function App() {
   };
 
   return (
-    <div style={{position:'relative',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+    <div style={{position:'relative',flex:1,display:'flex',flexDirection:'column',overflow:'hidden',
+      background:'var(--bg)', paddingTop:'env(safe-area-inset-top)'}}>
       <div style={{flex:1,position:'relative',overflow:'hidden'}}>
         {Object.entries(screens).map(([key, screen]) => (
           <div key={key} style={{
