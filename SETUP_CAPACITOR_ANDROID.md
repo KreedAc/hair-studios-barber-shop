@@ -54,15 +54,42 @@ Quando ci sei, dimmelo e passiamo alla Tappa 2.
 
 ---
 
-## TAPPA 2 · Notifiche push native (FCM) — *la faremo insieme dopo*
+## TAPPA 2 · Notifiche push native (FCM)
 
-In sintesi (per sapere cosa ci aspetta):
-1. Crei un progetto **Firebase** gratuito e ci colleghi il package
-   `com.hairstudiosbarbershop.twa`.
-2. Scarichi `google-services.json` e lo metti in `native/android/app/`.
-3. Aggiungiamo il plugin push (già in `package.json`) e il codice di
-   registrazione (lo preparo io nel sito).
-4. Aggiorno la Edge Function su Supabase per inviare via FCM.
+Prerequisiti già fatti: progetto Firebase creato, `google-services.json` in
+`native/android/app/`, app ricompilata. Il codice web delle push è già online
+(l'app lo carica dal sito). Restano 3 cose, tutte su Supabase/Firebase.
+
+### 2.1 Tabella dei token
+Supabase → **SQL Editor** → esegui [`patch_push_native.sql`](patch_push_native.sql)
+(crea la tabella `push_tokens`).
+
+### 2.2 Credenziale per inviare (Service Account Firebase)
+1. [Firebase Console](https://console.firebase.google.com) → il tuo progetto →
+   ingranaggio **Impostazioni progetto** → scheda **Account di servizio**
+2. **Genera nuova chiave privata** → scarica il file **JSON** (⚠️ è segreto,
+   non metterlo nel repo né condividerlo)
+3. Apri il file, copia **tutto** il suo contenuto
+
+### 2.3 Aggiorna la Edge Function e il secret
+1. Supabase → **Edge Functions → send-push** → **Edit** → incolla la nuova
+   versione di
+   [`supabase/functions/send-push/index.ts`](supabase/functions/send-push/index.ts)
+   → **Deploy**
+2. **Edge Functions → Secrets** → aggiungi:
+   | Nome | Valore |
+   |---|---|
+   | `FCM_SERVICE_ACCOUNT` | tutto il contenuto del JSON del punto 2.2 |
+
+   (I secret VAPID restano: servono ancora per le push web dei clienti iPhone
+   non-app e dei browser.)
+
+### 2.4 Prova
+1. Apri l'app sul telefono → **Account → Attiva le notifiche** → compare la
+   **finestra di sistema NATIVA** di Android → Consenti.
+2. Da un altro account (o dal sito) crea/conferma una prenotazione.
+3. La notifica arriva sull'app come notifica nativa. 🎉
+   Se non arriva, controlla i log: Supabase → Edge Functions → send-push → Logs.
 
 ## TAPPA 3 · Build di release e caricamento su Play — *dopo la Tappa 2*
 

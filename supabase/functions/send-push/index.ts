@@ -1,13 +1,14 @@
 // ============================================================
 // Hair Studios – Edge Function "send-push"
-// Invia notifiche push web (VAPID) ai destinatari giusti in base
-// all'evento. Chiamata dal frontend dopo le azioni sulle prenotazioni
-// e dal job dei promemoria (send_due_reminders).
+// Invia notifiche ai destinatari giusti in base all'evento:
+//  - Web Push (VAPID) ai browser/PWA iscritti  (tabella push_subscriptions)
+//  - FCM (Firebase) all'app nativa Android/iOS  (tabella push_tokens)
+// Chiamata dal frontend dopo le azioni sulle prenotazioni e dal job
+// dei promemoria (send_due_reminders).
 //
 // Secrets richiesti (Dashboard → Edge Functions → Secrets):
-//   VAPID_PUBLIC_KEY    chiave pubblica VAPID
-//   VAPID_PRIVATE_KEY   chiave privata VAPID
-//   VAPID_SUBJECT       es. "mailto:info@hairstudiosbarbershop.com"
+//   VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT   (web push)
+//   FCM_SERVICE_ACCOUNT  = JSON del service account Firebase (per l'app nativa)
 // SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY sono forniti in automatico.
 // ============================================================
 
@@ -23,12 +24,53 @@ webpush.setVapidDetails(
   Deno.env.get('VAPID_PRIVATE_KEY')!,
 );
 
+// Service account Firebase (facoltativo: se assente, si invia solo web push)
+let FCM_SA: { client_email: string; private_key: string; project_id: string } | null = null;
+try { const raw = Deno.env.get('FCM_SERVICE_ACCOUNT'); if (raw) FCM_SA = JSON.parse(raw); }
+catch (e) { console.error('FCM_SERVICE_ACCOUNT non valido:', e); }
+
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info',
 };
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } });
+
+// ── FCM v1: OAuth2 con JWT firmato dal service account ───────────
+const b64url = (data: Uint8Array | string): string => {
+  const bin = typeof data === 'string' ? data : String.fromCharCode(...data);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+};
+const pemToBuf = (pem: string): ArrayBuffer => {
+  const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
+  const bin = atob(b64);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+};
+async function getFcmAccessToken(sa: { client_email: string; private_key: string }): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const claim  = b64url(JSON.stringify({
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now, exp: now + 3600,
+  }));
+  const key = await crypto.subtle.importKey('pkcs8', pemToBuf(sa.private_key),
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const sig = new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key,
+    new TextEncoder().encode(`${header}.${claim}`)));
+  const jwt = `${header}.${claim}.${b64url(sig)}`;
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+  });
+  const j = await res.json();
+  if (!j.access_token) throw new Error('FCM token: ' + JSON.stringify(j));
+  return j.access_token;
+}
 
 // Eventi diretti al CLIENTE (booking.user_id) o al BARBIERE (admin)
 const TO_CLIENT = new Set(['confirmed', 'cancelled_by_staff', 'moved', 'reminder']);
@@ -54,7 +96,6 @@ Deno.serve(async (req) => {
     });
     const barbiere = st?.name || 'il barbiere';
 
-    // Testo per ogni tipo di evento
     const M: Record<string, { title: string; body: string; url: string }> = {
       confirmed:           { title: 'Prenotazione confermata ✓', body: `${bk.service_name}: ${quando} con ${barbiere}. Ti aspettiamo!`, url: '/?shortcut=prenotazioni' },
       cancelled_by_staff:  { title: 'Prenotazione annullata',    body: `Il tuo appuntamento del ${quando} è stato annullato. Contattaci per riprenotare.`, url: '/?shortcut=prenotazioni' },
@@ -66,44 +107,65 @@ Deno.serve(async (req) => {
     const msg = M[event];
     if (!msg) return json({ error: 'Evento non valido' }, 400);
 
-    // Trova gli user_id destinatari
+    // Destinatari
     let userIds: string[] = [];
     if (TO_CLIENT.has(event)) {
       if (bk.user_id) userIds = [bk.user_id];
     } else if (TO_BARBER.has(event)) {
-      // barbiere assegnato + super admin (staff_id null)
-      const { data: admins } = await admin
-        .from('profiles').select('id, staff_id').eq('is_admin', true);
-      userIds = (admins || [])
-        .filter(p => p.staff_id === bk.staff_id || p.staff_id === null)
-        .map(p => p.id);
+      const { data: admins } = await admin.from('profiles').select('id, staff_id').eq('is_admin', true);
+      userIds = (admins || []).filter(p => p.staff_id === bk.staff_id || p.staff_id === null).map(p => p.id);
     }
     if (!userIds.length) return json({ ok: true, sent: 0 });
 
-    const { data: subs } = await admin
-      .from('push_subscriptions').select('*').in('user_id', userIds);
-    if (!subs?.length) return json({ ok: true, sent: 0 });
-
-    const payload = JSON.stringify({ title: msg.title, body: msg.body, url: msg.url, tag: `booking-${booking_id}` });
-
     let sent = 0;
-    await Promise.all(subs.map(async (s) => {
-      try {
-        await webpush.sendNotification(
-          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          payload,
-        );
-        sent++;
-      } catch (err) {
-        // 404/410 = iscrizione scaduta → rimuovila
-        const code = (err as { statusCode?: number }).statusCode;
-        if (code === 404 || code === 410) {
-          await admin.from('push_subscriptions').delete().eq('endpoint', s.endpoint);
-        } else {
-          console.error('push send error:', code, err);
+
+    // 1) WEB PUSH (browser/PWA)
+    const { data: subs } = await admin.from('push_subscriptions').select('*').in('user_id', userIds);
+    if (subs?.length) {
+      const payload = JSON.stringify({ title: msg.title, body: msg.body, url: msg.url, tag: `booking-${booking_id}` });
+      await Promise.all(subs.map(async (s) => {
+        try {
+          await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload);
+          sent++;
+        } catch (err) {
+          const code = (err as { statusCode?: number }).statusCode;
+          if (code === 404 || code === 410) await admin.from('push_subscriptions').delete().eq('endpoint', s.endpoint);
+          else console.error('web push error:', code, err);
         }
-      }
-    }));
+      }));
+    }
+
+    // 2) FCM (app nativa Android/iOS)
+    const { data: tokens } = await admin.from('push_tokens').select('*').in('user_id', userIds);
+    if (tokens?.length && FCM_SA) {
+      const at = await getFcmAccessToken(FCM_SA);
+      const endpoint = `https://fcm.googleapis.com/v1/projects/${FCM_SA.project_id}/messages:send`;
+      await Promise.all(tokens.map(async (t) => {
+        try {
+          const r = await fetch(endpoint, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${at}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: {
+                token: t.token,
+                notification: { title: msg.title, body: msg.body },
+                data: { url: msg.url },
+                android: { priority: 'HIGH', notification: { sound: 'default' } },
+                apns: { payload: { aps: { sound: 'default' } } },
+              },
+            }),
+          });
+          if (r.ok) { sent++; return; }
+          const errBody = await r.text();
+          // token non più valido → rimuovilo
+          if (r.status === 404 || /UNREGISTERED|INVALID_ARGUMENT/.test(errBody)) {
+            await admin.from('push_tokens').delete().eq('token', t.token);
+          } else {
+            console.error('fcm error:', r.status, errBody);
+          }
+        } catch (e) { console.error('fcm send:', e); }
+      }));
+    }
 
     return json({ ok: true, sent });
   } catch (e) {
