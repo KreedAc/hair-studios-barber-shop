@@ -261,8 +261,14 @@ const supabase = CONFIG_READY
 // della Edge Function send-push.
 const VAPID_PUBLIC_KEY = 'BFgyuGerCg0mB8L9QbHQUFFhBr2BCRbIO2RTpLHqf3qbGHccrRNEGR3tE-cTu8aZI7bpEtNIkhTb0kLWjxBGEHU';
 
+// Rileva se giriamo dentro l'app nativa Capacitor
+const isNativeApp = () => typeof window.Capacitor?.isNativePlatform === 'function' && window.Capacitor.isNativePlatform();
+const nativePlatform = () => window.Capacitor?.getPlatform?.() || 'web';
+const nativePush = () => window.Capacitor?.Plugins?.PushNotifications;
+
 const pushSupported = () =>
-  typeof Notification !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window;
+  isNativeApp() ||
+  (typeof Notification !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window);
 
 const urlBase64ToUint8Array = (base64String) => {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -297,6 +303,56 @@ const subscribeToPush = async (userId) => {
     }, { onConflict: 'endpoint' });
     return 'granted';
   } catch (e) { console.error('push subscribe:', e); return 'error'; }
+};
+
+// ── Push native (app Capacitor: FCM su Android, APNs su iOS) ──────
+let nativePushReady = false;
+const registerNativePush = async (userId) => {
+  try {
+    const PN = nativePush();
+    if (!PN || !supabase) return 'unsupported';
+    let perm = await PN.checkPermissions();
+    if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
+      perm = await PN.requestPermissions();   // finestra di sistema NATIVA
+    }
+    if (perm.receive !== 'granted') return perm.receive === 'denied' ? 'denied' : 'default';
+    // Listener una sola volta: alla registrazione salva il token FCM/APNs
+    if (!nativePushReady) {
+      nativePushReady = true;
+      PN.addListener('registration', async (t) => {
+        try {
+          await supabase.from('push_tokens').upsert(
+            { user_id: userId, token: t.value, platform: nativePlatform() },
+            { onConflict: 'token' });
+        } catch (e) { console.error('save token:', e); }
+      });
+      PN.addListener('registrationError', (e) => console.error('native push reg error:', e));
+    }
+    await PN.register();
+    return 'granted';
+  } catch (e) { console.error('native push:', e); return 'error'; }
+};
+
+// Stato attuale del permesso (nativo o web), normalizzato: granted|denied|default
+const notifPermState = async () => {
+  if (isNativeApp()) {
+    const PN = nativePush();
+    if (!PN) return 'unsupported';
+    const p = await PN.checkPermissions().catch(() => null);
+    if (!p) return 'default';
+    return p.receive === 'granted' ? 'granted' : p.receive === 'denied' ? 'denied' : 'default';
+  }
+  if (typeof Notification === 'undefined') return 'unsupported';
+  return Notification.permission; // granted|denied|default
+};
+
+// Attiva le notifiche: sceglie il canale giusto (nativo o web)
+const enableNotifications = (userId) =>
+  isNativeApp() ? registerNativePush(userId) : subscribeToPush(userId);
+
+// Se il permesso è già concesso, riallinea l'iscrizione/token (silenzioso)
+const ensureNotifications = async (userId) => {
+  if ((await notifPermState()) === 'granted') enableNotifications(userId);
 };
 
 // Invia una notifica tramite la Edge Function (best-effort, non blocca l'azione)
@@ -344,13 +400,16 @@ function NotifHelpModal({ onClose }) {
 
 // Pulsante riutilizzabile per attivare le notifiche (schermate profilo)
 function NotificationButton({ userId }) {
-  const [state, setState] = useState(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission);
+  const [state, setState] = useState(isNativeApp() ? 'loading' : (typeof Notification === 'undefined' ? 'unsupported' : Notification.permission));
   const [showHelp, setShowHelp] = useState(false);
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
+  // Nell'app nativa lo stato del permesso va letto dal plugin
+  useEffect(() => { if (isNativeApp()) notifPermState().then(setState); }, []);
+
   const activate = async () => {
-    const res = await subscribeToPush(userId);
+    const res = await enableNotifications(userId);
     setState(res);
     // Se non è andato a buon fine (permesso negato/bloccato dal telefono), guida l'utente
     if (res !== 'granted') setShowHelp(true);
@@ -371,6 +430,7 @@ function NotificationButton({ userId }) {
     }
     return null;
   }
+  if (state === 'loading') return null; // in attesa dello stato nativo
   if (state === 'granted') {
     return (
       <div style={box}>
@@ -2838,17 +2898,19 @@ function App() {
 
   // Prompt notifiche una tantum: dopo il login, se supportate e mai chieste
   useEffect(() => {
-    if (!profile) return;
-    if (!pushSupported() || Notification.permission !== 'default') return;
-    if (localStorage.getItem('notifPromptSeen')) return;
-    const t = setTimeout(() => setShowNotif(true), 6000);
-    return () => clearTimeout(t);
+    if (!profile || localStorage.getItem('notifPromptSeen')) return;
+    if (!pushSupported()) return;
+    let timer, cancelled = false;
+    notifPermState().then((s) => {
+      if (!cancelled && s === 'default') timer = setTimeout(() => setShowNotif(true), 6000);
+    });
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [profile?.id]);
 
   const handleEnableNotif = async () => {
     localStorage.setItem('notifPromptSeen', '1');
     setShowNotif(false);
-    const res = await subscribeToPush(profile.id);
+    const res = await enableNotifications(profile.id);
     if (res === 'granted') setToast('🔔 Notifiche attivate');
     else setShowNotifHelp(true); // il telefono le blocca: guida l'utente
   };
@@ -2891,8 +2953,8 @@ function App() {
       else setTab(profile.is_admin ? 'admin-dash' : 'home');
       if (shortcut) window.history.replaceState({}, '', '/');
       loadAppData();
-      // Se il permesso notifiche è già concesso, riallinea l'iscrizione (silenzioso)
-      if (pushSupported() && Notification.permission === 'granted') subscribeToPush(profile.id);
+      // Se il permesso notifiche è già concesso, riallinea iscrizione/token (silenzioso)
+      ensureNotifications(profile.id);
     }
   }, [profile?.id]);
 
