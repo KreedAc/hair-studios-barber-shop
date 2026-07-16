@@ -1,0 +1,10 @@
+# Dipendenze e progetti nativi generati in locale (non vanno nel repo)
+node_modules/
+android/
+ios/
+
+# Chiavi di firma: non committarle MAI
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist

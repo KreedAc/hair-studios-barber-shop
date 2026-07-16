@@ -1,0 +1,14 @@
+{
+  "name": "hair-studios-native",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Wrapper nativo (Capacitor) dell'app Hair Studios – Barber Shop. Carica il sito live e aggiunge le notifiche push native (FCM/APNs).",
+  "devDependencies": {
+    "@capacitor/cli": "^6"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6",
+    "@capacitor/android": "^6",
+    "@capacitor/push-notifications": "^6"
+  }
+}

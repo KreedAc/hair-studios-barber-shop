@@ -1,0 +1,14 @@
+{
+  "appId": "com.hairstudiosbarbershop.twa",
+  "appName": "Hair Studios",
+  "webDir": "www",
+  "server": {
+    "url": "https://hairstudiosbarbershop.com",
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}
