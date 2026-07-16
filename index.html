@@ -2910,6 +2910,14 @@ function App() {
     return () => { clearTimeout(debounce); supabase.removeChannel(channel); };
   }, [profile?.id]);
 
+  // Aggiorna i dati quando l'app torna in primo piano (niente più chiudi/riapri)
+  useEffect(() => {
+    if (!profile) return;
+    const onVisible = () => { if (document.visibilityState === 'visible') loadAppData(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [profile?.id]);
+
   const loadAppData = async () => {
     setDataLoad(true);
     try {
