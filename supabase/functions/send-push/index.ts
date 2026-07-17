@@ -29,6 +29,12 @@ let FCM_SA: { client_email: string; private_key: string; project_id: string } | 
 try { const raw = Deno.env.get('FCM_SERVICE_ACCOUNT'); if (raw) FCM_SA = JSON.parse(raw); }
 catch (e) { console.error('FCM_SERVICE_ACCOUNT non valido:', e); }
 
+// APNs (app iOS): chiave .p8 + identificativi. Se assenti, iOS non riceve.
+const APNS_KEY       = Deno.env.get('APNS_KEY');        // contenuto del file .p8
+const APNS_KEY_ID    = Deno.env.get('APNS_KEY_ID');     // 10 caratteri
+const APNS_TEAM_ID   = Deno.env.get('APNS_TEAM_ID');    // 10 caratteri
+const APNS_BUNDLE_ID = Deno.env.get('APNS_BUNDLE_ID') ?? 'com.hairstudiosbarbershop.twa';
+
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info',
@@ -70,6 +76,33 @@ async function getFcmAccessToken(sa: { client_email: string; private_key: string
   const j = await res.json();
   if (!j.access_token) throw new Error('FCM token: ' + JSON.stringify(j));
   return j.access_token;
+}
+
+// ── APNs: JWT ES256 firmato con la chiave .p8 ───────────────────
+async function apnsAuthToken(): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const header  = b64url(JSON.stringify({ alg: 'ES256', kid: APNS_KEY_ID }));
+  const payload = b64url(JSON.stringify({ iss: APNS_TEAM_ID, iat: now }));
+  const key = await crypto.subtle.importKey('pkcs8', pemToBuf(APNS_KEY!),
+    { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  const sig = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key,
+    new TextEncoder().encode(`${header}.${payload}`)));
+  return `${header}.${payload}.${b64url(sig)}`;
+}
+async function apnsSend(jwt: string, token: string, m: { title: string; body: string; url: string }, production: boolean) {
+  const host = production ? 'https://api.push.apple.com' : 'https://api.sandbox.push.apple.com';
+  const r = await fetch(`${host}/3/device/${token}`, {
+    method: 'POST',
+    headers: {
+      authorization: `bearer ${jwt}`,
+      'apns-topic': APNS_BUNDLE_ID,
+      'apns-push-type': 'alert',
+      'apns-priority': '10',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ aps: { alert: { title: m.title, body: m.body }, sound: 'default' }, url: m.url }),
+  });
+  return { ok: r.ok, status: r.status, body: r.ok ? '' : await r.text() };
 }
 
 // Eventi diretti al CLIENTE (booking.user_id) o al BARBIERE (admin)
@@ -135,12 +168,16 @@ Deno.serve(async (req) => {
       }));
     }
 
-    // 2) FCM (app nativa Android/iOS)
+    // Token dell'app nativa, separati per piattaforma
     const { data: tokens } = await admin.from('push_tokens').select('*').in('user_id', userIds);
-    if (tokens?.length && FCM_SA) {
+    const androidTokens = (tokens || []).filter(t => t.platform !== 'ios');
+    const iosTokens     = (tokens || []).filter(t => t.platform === 'ios');
+
+    // 2) FCM → Android
+    if (androidTokens.length && FCM_SA) {
       const at = await getFcmAccessToken(FCM_SA);
       const endpoint = `https://fcm.googleapis.com/v1/projects/${FCM_SA.project_id}/messages:send`;
-      await Promise.all(tokens.map(async (t) => {
+      await Promise.all(androidTokens.map(async (t) => {
         try {
           const r = await fetch(endpoint, {
             method: 'POST',
@@ -151,19 +188,32 @@ Deno.serve(async (req) => {
                 notification: { title: msg.title, body: msg.body },
                 data: { url: msg.url },
                 android: { priority: 'HIGH', notification: { sound: 'default' } },
-                apns: { payload: { aps: { sound: 'default' } } },
               },
             }),
           });
           if (r.ok) { sent++; return; }
           const errBody = await r.text();
-          // token non più valido → rimuovilo
           if (r.status === 404 || /UNREGISTERED|INVALID_ARGUMENT/.test(errBody)) {
             await admin.from('push_tokens').delete().eq('token', t.token);
-          } else {
-            console.error('fcm error:', r.status, errBody);
-          }
+          } else console.error('fcm error:', r.status, errBody);
         } catch (e) { console.error('fcm send:', e); }
+      }));
+    }
+
+    // 3) APNs → iOS (prova produzione, poi sandbox per le build di sviluppo)
+    if (iosTokens.length && APNS_KEY && APNS_KEY_ID && APNS_TEAM_ID) {
+      const jwt = await apnsAuthToken();
+      await Promise.all(iosTokens.map(async (t) => {
+        try {
+          let res = await apnsSend(jwt, t.token, msg, true);
+          if (res.status === 400 && res.body.includes('BadDeviceToken')) {
+            res = await apnsSend(jwt, t.token, msg, false); // token di una build di sviluppo
+          }
+          if (res.ok) { sent++; return; }
+          if (res.status === 410 || /Unregistered|BadDeviceToken/.test(res.body)) {
+            await admin.from('push_tokens').delete().eq('token', t.token);
+          } else console.error('apns error:', res.status, res.body);
+        } catch (e) { console.error('apns send:', e); }
       }));
     }
 
