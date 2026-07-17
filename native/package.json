@@ -10,6 +10,7 @@
   "dependencies": {
     "@capacitor/core": "^6",
     "@capacitor/android": "^6",
+    "@capacitor/ios": "^6",
     "@capacitor/push-notifications": "^6"
   }
 }
