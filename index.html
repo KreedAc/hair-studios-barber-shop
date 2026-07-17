@@ -316,6 +316,7 @@ const registerNativePush = async (userId) => {
       perm = await PN.requestPermissions();   // finestra di sistema NATIVA
     }
     if (perm.receive !== 'granted') return perm.receive === 'denied' ? 'denied' : 'default';
+    try { alert('DEBUG push: platform='+nativePlatform()+' perm='+perm.receive); } catch(_) {} // DEBUG
     // Listener una sola volta: alla registrazione salva il token FCM/APNs
     if (!nativePushReady) {
       nativePushReady = true;
