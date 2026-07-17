@@ -1096,7 +1096,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
               </div>
               <button className="btn-icon" onClick={()=>{setWeekOffset(o=>o+1);setTime(null);setDate(null);}}>›</button>
             </div>
-            <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingBottom:4}}>
+            <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingTop:4,paddingBottom:4}}>
               {weekDates.map((d,i) => {
                 const today = new Date(); today.setHours(0,0,0,0);
                 const isPast = d < today;
@@ -1803,7 +1803,7 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
               </div>
               <button className="btn-icon" onClick={()=>setWeekOffset(o=>o+1)}>›</button>
             </div>
-            <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingBottom:4}}>
+            <div style={{display:'flex',gap:6,marginBottom:16,overflowX:'auto',paddingTop:4,paddingBottom:4}}>
               {weekDates.map((d,i)=>{
                 const today=new Date(); today.setHours(0,0,0,0);
                 const isPast=d<today;
