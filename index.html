@@ -316,7 +316,6 @@ const registerNativePush = async (userId) => {
       perm = await PN.requestPermissions();   // finestra di sistema NATIVA
     }
     if (perm.receive !== 'granted') return perm.receive === 'denied' ? 'denied' : 'default';
-    try { alert('DEBUG push: platform='+nativePlatform()+' perm='+perm.receive); } catch(_) {} // DEBUG
     // Listener una sola volta: alla registrazione salva il token FCM/APNs
     if (!nativePushReady) {
       nativePushReady = true;
@@ -325,10 +324,9 @@ const registerNativePush = async (userId) => {
           await supabase.from('push_tokens').upsert(
             { user_id: userId, token: t.value, platform: nativePlatform() },
             { onConflict: 'token' });
-          try { alert('✅ Notifiche: token registrato ('+nativePlatform()+')'); } catch(_) {} // DEBUG temporaneo
-        } catch (e) { console.error('save token:', e); try { alert('❌ Salvataggio token fallito: '+(e?.message||e)); } catch(_) {} } // DEBUG
+        } catch (e) { console.error('save token:', e); }
       });
-      PN.addListener('registrationError', (e) => { console.error('native push reg error:', e); try { alert('❌ Registrazione push fallita: '+JSON.stringify(e)); } catch(_) {} }); // DEBUG
+      PN.addListener('registrationError', (e) => console.error('native push reg error:', e));
     }
     await PN.register();
     return 'granted';
