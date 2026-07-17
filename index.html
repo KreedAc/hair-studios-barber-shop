@@ -324,9 +324,10 @@ const registerNativePush = async (userId) => {
           await supabase.from('push_tokens').upsert(
             { user_id: userId, token: t.value, platform: nativePlatform() },
             { onConflict: 'token' });
-        } catch (e) { console.error('save token:', e); }
+          try { alert('✅ Notifiche: token registrato ('+nativePlatform()+')'); } catch(_) {} // DEBUG temporaneo
+        } catch (e) { console.error('save token:', e); try { alert('❌ Salvataggio token fallito: '+(e?.message||e)); } catch(_) {} } // DEBUG
       });
-      PN.addListener('registrationError', (e) => console.error('native push reg error:', e));
+      PN.addListener('registrationError', (e) => { console.error('native push reg error:', e); try { alert('❌ Registrazione push fallita: '+JSON.stringify(e)); } catch(_) {} }); // DEBUG
     }
     await PN.register();
     return 'granted';
