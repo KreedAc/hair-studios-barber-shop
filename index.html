@@ -3007,10 +3007,14 @@ function App() {
     localStorage.setItem('installDismissed', String(Date.now()));
   };
 
-  // Prompt notifiche una tantum: dopo il login, se supportate e mai chieste
+  // Prompt notifiche: dopo il login, se supportate e permesso ancora da decidere.
+  // Se l'utente lo ignora/chiude, si ripropone dopo 7 giorni (non a ogni accesso).
+  // Chi ha già concesso o negato è in stato 'granted'/'denied' e non viene più disturbato.
+  const NOTIF_PROMPT_COOLDOWN = 7 * 24 * 60 * 60 * 1000; // 7 giorni
   useEffect(() => {
-    if (!profile || localStorage.getItem('notifPromptSeen')) return;
-    if (!pushSupported()) return;
+    if (!profile || !pushSupported()) return;
+    const last = Number(localStorage.getItem('notifPromptSeen') || 0);
+    if (last && Date.now() - last < NOTIF_PROMPT_COOLDOWN) return;
     let timer, cancelled = false;
     notifPermState().then((s) => {
       if (!cancelled && s === 'default') timer = setTimeout(() => setShowNotif(true), 6000);
@@ -3019,7 +3023,7 @@ function App() {
   }, [profile?.id]);
 
   const handleEnableNotif = async () => {
-    localStorage.setItem('notifPromptSeen', '1');
+    localStorage.setItem('notifPromptSeen', String(Date.now()));
     setShowNotif(false);
     const res = await enableNotifications(profile.id);
     if (res === 'granted') setToast('🔔 Notifiche attivate');
@@ -3028,7 +3032,7 @@ function App() {
 
   const handleDismissNotif = () => {
     setShowNotif(false);
-    localStorage.setItem('notifPromptSeen', '1');
+    localStorage.setItem('notifPromptSeen', String(Date.now()));
   };
 
   // Controlla sessione all'avvio
