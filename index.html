@@ -266,6 +266,21 @@ const isNativeApp = () => typeof window.Capacitor?.isNativePlatform === 'functio
 const nativePlatform = () => window.Capacitor?.getPlatform?.() || 'web';
 const nativePush = () => window.Capacitor?.Plugins?.PushNotifications;
 
+// ── APP NATIVE (store) ──────────────────────────────────────────
+const APP_STORE_URL  = 'https://apps.apple.com/app/id6792089323';
+const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.hairstudiosbarbershop.twa';
+// Interruttore: mettere a true quando l'app Android è pubblica sul Play Store.
+const ANDROID_APP_LIVE = false;
+
+// Sistema operativo mobile del dispositivo (per il banner "Scarica l'app").
+// Ritorna null su desktop → nessun banner.
+const mobileOS = () => {
+  const ua = navigator.userAgent || '';
+  if (/iphone|ipad|ipod/i.test(ua)) return 'ios';
+  if (/android/i.test(ua)) return 'android';
+  return null;
+};
+
 const pushSupported = () =>
   isNativeApp() ||
   (typeof Notification !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window);
@@ -2924,6 +2939,30 @@ function InstallBanner({ type, onInstall, onDismiss }) {
   );
 }
 
+function DownloadAppBanner({ os, onDownload, onDismiss }) {
+  const store = os === 'ios' ? 'App Store' : 'Play Store';
+  return (
+    <div style={{position:'fixed',bottom:80,left:16,right:16,zIndex:200,
+      background:'var(--ink)',borderRadius:16,padding:'14px 16px',
+      boxShadow:'0 8px 32px rgba(0,0,0,0.35)',display:'flex',alignItems:'center',gap:12,
+      animation:'slideUp 0.3s ease'}}>
+      <img src="/logo.png" alt="" style={{width:40,height:40,borderRadius:10,flexShrink:0,objectFit:'contain',background:'white',padding:2}} />
+      <div style={{flex:1,minWidth:0}}>
+        <p style={{fontSize:13,fontWeight:700,color:'white',marginBottom:2}}>Scarica l'app Hair Studios</p>
+        <p style={{fontSize:11,color:'rgba(255,255,255,0.6)',lineHeight:1.4}}>Più veloce, con notifiche affidabili · su {store}</p>
+      </div>
+      <button onClick={onDownload}
+        style={{background:'white',color:'var(--ink)',border:'none',borderRadius:8,
+          padding:'8px 14px',fontSize:12,fontWeight:700,flexShrink:0,cursor:'pointer'}}>
+        Scarica
+      </button>
+      <button onClick={onDismiss} aria-label="Chiudi banner"
+        style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',
+          fontSize:18,cursor:'pointer',padding:'0 0 0 4px',flexShrink:0,lineHeight:1}}>✕</button>
+    </div>
+  );
+}
+
 function NotifBanner({ onEnable, onDismiss }) {
   return (
     <div style={{position:'fixed',bottom:80,left:16,right:16,zIndex:200,
@@ -2965,26 +3004,32 @@ function App() {
   const [toast, setToast]         = useState(null);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showInstall, setShowInstall]     = useState(null); // null | 'android' | 'ios'
+  const [showGetApp, setShowGetApp]       = useState(null); // null | 'ios' | 'android' — banner "Scarica l'app" nativa
   const [showNotif, setShowNotif]         = useState(false); // prompt notifiche una tantum
   const [showNotifHelp, setShowNotifHelp] = useState(false); // guida attivazione notifiche
 
-  // Gestione install banner PWA
+  // Banner app: se l'app nativa è disponibile per quel sistema → "Scarica l'app"
+  // (sia nel browser sia nella PWA installata). Desktop: niente. App nativa: niente.
+  // Finché l'app nativa non è attiva (Android in attesa) → fallback: install PWA.
   useEffect(() => {
-    // Già installata come PWA → non mostrare
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return;
+    if (isNativeApp()) return;                 // già dentro l'app nativa
+    const os = mobileOS();
+    if (!os) return;                           // desktop / altro → niente
+
     // Dismissione recente (7 giorni) → non mostrare
-    const dismissed = localStorage.getItem('installDismissed');
+    const dismissed = localStorage.getItem('appPromoDismissed');
     if (dismissed && Date.now() - parseInt(dismissed) < 7*24*60*60*1000) return;
 
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isSafari = /safari/i.test(navigator.userAgent) && !/crios|fxios|chrome/i.test(navigator.userAgent);
+    const appLive = os === 'ios' ? true : ANDROID_APP_LIVE;
 
-    if (isIOS && isSafari) {
-      setTimeout(() => setShowInstall('ios'), 4000);
-      return;
+    if (appLive) {
+      // App nativa disponibile → banner "Scarica" (browser e PWA)
+      const t = setTimeout(() => setShowGetApp(os), 4000);
+      return () => clearTimeout(t);
     }
 
-    // Android / Chrome desktop
+    // App nativa non ancora attiva → fallback: install PWA (solo nel browser)
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return;
     const handler = (e) => {
       e.preventDefault();
       setInstallPrompt(e);
@@ -3004,7 +3049,17 @@ function App() {
 
   const handleDismissInstall = () => {
     setShowInstall(null);
-    localStorage.setItem('installDismissed', String(Date.now()));
+    localStorage.setItem('appPromoDismissed', String(Date.now()));
+  };
+
+  const handleGetApp = () => {
+    window.open(showGetApp === 'ios' ? APP_STORE_URL : PLAY_STORE_URL, '_blank');
+    setShowGetApp(null);
+    localStorage.setItem('appPromoDismissed', String(Date.now()));
+  };
+  const handleDismissGetApp = () => {
+    setShowGetApp(null);
+    localStorage.setItem('appPromoDismissed', String(Date.now()));
   };
 
   // Prompt notifiche: dopo il login, se supportate e permesso ancora da decidere.
@@ -3207,8 +3262,9 @@ function App() {
         ))}
       </div>
       <BottomNav tab={tab} setTab={setTab} isAdmin={isAdmin} onRefresh={loadAppData} />
-      {showInstall && <InstallBanner type={showInstall} onInstall={handleInstall} onDismiss={handleDismissInstall} />}
-      {showNotif && !showInstall && <NotifBanner onEnable={handleEnableNotif} onDismiss={handleDismissNotif} />}
+      {showGetApp && <DownloadAppBanner os={showGetApp} onDownload={handleGetApp} onDismiss={handleDismissGetApp} />}
+      {showInstall && !showGetApp && <InstallBanner type={showInstall} onInstall={handleInstall} onDismiss={handleDismissInstall} />}
+      {showNotif && !showInstall && !showGetApp && <NotifBanner onEnable={handleEnableNotif} onDismiss={handleDismissNotif} />}
       {showNotifHelp && <NotifHelpModal onClose={()=>setShowNotifHelp(false)} />}
       {toast && <Toast message={toast} onDone={()=>setToast(null)} />}
     </div>
