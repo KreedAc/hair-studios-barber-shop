@@ -131,9 +131,16 @@ CREATE POLICY "bookings: leggi le proprie o admin" ON public.bookings
 CREATE POLICY "bookings: inserisci le proprie" ON public.bookings
   FOR INSERT WITH CHECK (auth.uid() = user_id AND status = 'pending');
 
-CREATE POLICY "bookings: cancella le proprie pending" ON public.bookings
-  FOR UPDATE USING (auth.uid() = user_id AND status = 'pending')
-  WITH CHECK (status = 'cancelled');
+CREATE POLICY "bookings: annulla le proprie" ON public.bookings
+  FOR UPDATE
+  USING (
+    auth.uid() = user_id AND (
+      status = 'pending'
+      OR (status = 'confirmed'
+          AND (date + "time") AT TIME ZONE 'Europe/Rome' > now() + interval '2 hours')
+    )
+  )
+  WITH CHECK (auth.uid() = user_id AND status = 'cancelled');
 
 CREATE POLICY "bookings: admin tutto" ON public.bookings
   FOR ALL USING (public.is_admin());
