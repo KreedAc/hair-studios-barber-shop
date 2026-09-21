@@ -270,7 +270,7 @@ const nativePush = () => window.Capacitor?.Plugins?.PushNotifications;
 const APP_STORE_URL  = 'https://apps.apple.com/app/id6792089323';
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.hairstudiosbarbershop.twa';
 // Interruttore: mettere a true quando l'app Android è pubblica sul Play Store.
-const ANDROID_APP_LIVE = false;
+const ANDROID_APP_LIVE = true;
 
 // Sistema operativo mobile del dispositivo (per il banner "Scarica l'app").
 // Ritorna null su desktop → nessun banner.
@@ -1234,7 +1234,16 @@ function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
     ? myBookings.filter(b=>b.date===toLocalDate(weekDates[selectedDay]))
     : myBookings;
 
+  // Un appuntamento è annullabile dal cliente se è "in attesa", oppure è
+  // "confermato" ma mancano PIÙ di 2 ore all'orario (a 2h esatte o meno, no).
+  const canCancel = (b) => {
+    if (b.status === 'pending') return true;
+    if (b.status !== 'confirmed') return false;
+    return new Date(`${b.date}T${b.time}`).getTime() - Date.now() > 2 * 60 * 60 * 1000;
+  };
+
   const cancel = async (id) => {
+    if (!window.confirm('Vuoi annullare questo appuntamento?')) return;
     const { error } = await supabase.from('bookings').update({ status:'cancelled' }).eq('id',id);
     if (error) { setToast('Errore: '+error.message); return; }
     notifyPush(id, 'cancelled_by_client');
@@ -1304,7 +1313,7 @@ function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
                     <p style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{s.name}</p>
                     <p style={{fontSize:11,color:'var(--ink3)'}}>{b.service_duration} min</p>
                   </div>
-                  {b.status==='pending'&&(
+                  {canCancel(b)&&(
                     <button onClick={()=>cancel(b.id)}
                       style={{fontSize:11,fontWeight:600,padding:'6px 12px',borderRadius:8,border:'1px solid',
                         color:'oklch(45% 0.18 25)',borderColor:'oklch(90% 0.04 20)',background:'oklch(98% 0.02 20)'}}>
