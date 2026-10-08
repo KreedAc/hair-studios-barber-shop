@@ -232,6 +232,18 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .loading-screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 50; }
+
+    /* ── RESTYLING (proposta) ── */
+    body, button, input, textarea, h1, h2, h3, h4 { font-variant-numeric: lining-nums tabular-nums; }
+    .btn-primary, .btn-gold, .btn-secondary { transition: transform .12s ease-out, box-shadow .12s ease-out, background-color .15s ease-out; }
+    .btn-primary:active, .btn-gold:active, .btn-secondary:active, .chip:active, .slot:active { transform: scale(0.97); }
+    .chip { transition: background-color .15s ease-out, color .15s ease-out, border-color .15s ease-out; }
+    .step-dot { transition: width .2s ease-out, background-color .2s ease-out; }
+    .nav-icon svg { width: 22px; height: 22px; display: block; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .slot { padding: 11px 4px; border-radius: 10px; text-align: center; font: 600 15px 'Jost', sans-serif; border: 1.5px solid var(--border); background: var(--bg); color: var(--ink); transition: background-color .15s ease-out, border-color .15s ease-out, transform .1s ease-out; }
+    .slot:disabled { background: transparent; border-color: transparent; color: var(--ink3); text-decoration: line-through; opacity: .5; cursor: not-allowed; }
+    .slot.sel { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
   </style>
 </head>
 <body>
@@ -646,26 +658,37 @@ const mapBooking = (b) => ({
 });
 
 // ── BOTTOM NAV ──────────────────────────────────────────────────
+const NAV_PATHS = {
+  home:     <><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></>,
+  scissors: <><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.12 15.88"/><path d="M14.47 14.48 20 20"/><path d="M8.12 8.12 12 12"/></>,
+  calendar: <><rect x="3" y="4.5" width="18" height="16.5" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 10h18"/></>,
+  user:     <><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></>,
+  grid:     <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
+  users:    <><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 2.9-6 6.5-6s6.5 2.5 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18 14.3c2.1.7 3.5 2.8 3.5 5.7"/></>,
+  history:  <><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4.5h4.5"/><path d="M12 7.5V12l3 2"/></>,
+};
+const NavIcon = ({ name }) => <svg viewBox="0 0 24 24" aria-hidden="true">{NAV_PATHS[name]}</svg>;
+
 function BottomNav({ tab, setTab, isAdmin, onRefresh }) {
   const userTabs = [
-    { id:'home',     label:'Home',       icon:'⊞' },
-    { id:'booking',  label:'Prenota',    icon:'✦' },
-    { id:'calendar', label:'Calendario', icon:'▦' },
-    { id:'profile',  label:'Profilo',    icon:'◯' },
+    { id:'home',     label:'Home',       icon:'home' },
+    { id:'booking',  label:'Prenota',    icon:'scissors' },
+    { id:'calendar', label:'Calendario', icon:'calendar' },
+    { id:'profile',  label:'Profilo',    icon:'user' },
   ];
   const adminTabs = [
-    { id:'admin-dash',    label:'Dashboard',  icon:'⊞' },
-    { id:'admin-cal',     label:'Calendario', icon:'▦' },
-    { id:'admin-staff',   label:'Staff',      icon:'◉' },
-    { id:'admin-history', label:'Storico',    icon:'≡' },
-    { id:'admin-account', label:'Account',    icon:'◯' },
+    { id:'admin-dash',    label:'Dashboard',  icon:'grid' },
+    { id:'admin-cal',     label:'Calendario', icon:'calendar' },
+    { id:'admin-staff',   label:'Staff',      icon:'users' },
+    { id:'admin-history', label:'Storico',    icon:'history' },
+    { id:'admin-account', label:'Account',    icon:'user' },
   ];
   const tabs = isAdmin ? adminTabs : userTabs;
   return (
     <nav className="bottom-nav">
       {tabs.map(t => (
         <button key={t.id} className={`nav-item ${tab===t.id?'active':''}`} onClick={() => { if (tab===t.id && (t.id==='admin-dash'||t.id==='home') && onRefresh) { onRefresh(); } else { setTab(t.id); } }}>
-          <span className="nav-icon">{t.icon}</span>
+          <span className="nav-icon"><NavIcon name={t.icon}/></span>
           <span className="nav-label">{t.label}</span>
         </button>
       ))}
@@ -707,7 +730,7 @@ function NewPasswordScreen({ onDone }) {
   };
 
   return (
-    <div className="screen" style={{justifyContent:'center', padding:'0 32px', paddingTop:'env(safe-area-inset-top)'}}>
+    <div className="screen" style={{justifyContent:'safe center', overflowY:'auto', padding:'24px 32px', paddingTop:'max(24px, env(safe-area-inset-top))'}}>
       <div style={{marginBottom:32, textAlign:'center'}}>
         <img src="/logo.png" alt="Hair Studios" style={{width:100,height:100,objectFit:'contain',margin:'0 auto 16px',display:'block'}} />
         <h1 style={{fontSize:24,fontWeight:700,color:'var(--ink)',letterSpacing:-0.5}}>Nuova password</h1>
@@ -798,7 +821,7 @@ function AuthScreen({ onLogin }) {
   };
 
   return (
-    <div className="screen" style={{justifyContent:'center', padding:'0 32px', paddingTop:'env(safe-area-inset-top)'}}>
+    <div className="screen" style={{justifyContent:'safe center', overflowY:'auto', padding:'24px 32px', paddingTop:'max(24px, env(safe-area-inset-top))'}}>
       <div style={{marginBottom:36, textAlign:'center'}}>
         <img src="/logo.png" alt="Hair Studios" style={{width:120,height:120,objectFit:'contain',margin:'0 auto 20px',display:'block'}} />
         <h1 style={{fontSize:28,fontWeight:700,color:'var(--ink)',letterSpacing:-0.5,lineHeight:1.1}}>Hair Studios</h1>
@@ -905,14 +928,14 @@ function AuthScreen({ onLogin }) {
 }
 
 // ── USER HOME ───────────────────────────────────────────────────
-function UserHome({ user, profile, bookings, setTab, staff, services }) {
+function UserHome({ user, profile, bookings, setTab, staff, services, onRebook }) {
   const myBookings = bookings.filter(b => b.userId===profile.id||b.user_id===profile.id)
     .sort((a,b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
   const next = myBookings.find(b => b.status!=='cancelled' && new Date(`${b.date}T${b.time}`) >= new Date());
   const staffMember = next ? staff.find(s => s.id===next.staff_id||s.id===next.staffId) : null;
 
   const hour = new Date().getHours();
-  const greeting = hour<12 ? 'Buongiorno' : hour<18 ? 'Buonasera' : 'Buonasera';
+  const greeting = hour<12 ? 'Buongiorno' : hour<18 ? 'Buon pomeriggio' : 'Buonasera';
 
   return (
     <div className="screen">
@@ -963,9 +986,48 @@ function UserHome({ user, profile, bookings, setTab, staff, services }) {
           </div>
         )}
 
-        <button className="btn-gold" style={{marginBottom:20}} onClick={() => setTab('booking')}>
-          + Nuova Prenotazione
+        <button className="btn-gold" style={{marginBottom:28}} onClick={() => setTab('booking')}>
+          + Nuova prenotazione
         </button>
+
+        {(() => {
+          const nowD = new Date();
+          const others = myBookings.filter(b => b !== next && b.status!=='cancelled' && new Date(`${b.date}T${b.time}`) >= nowD);
+          const last = [...myBookings].reverse().find(b => b.status==='confirmed' && new Date(`${b.date}T${b.time}`) < nowD);
+          const lastStaff = last ? staff.find(s => s.id===last.staff_id) : null;
+          return (<>
+            {others.length > 0 && (
+              <div style={{marginBottom:28}}>
+                <p className="section-title" style={{marginBottom:6}}>Le tue prossime</p>
+                {others.map(b => { const st = staff.find(s => s.id===b.staff_id); const d = new Date(b.date);
+                  return (
+                  <div key={b.id} style={{display:'flex',alignItems:'center',gap:14,padding:'12px 0',borderBottom:'1px solid var(--border)'}}>
+                    <div style={{width:40,textAlign:'center',flexShrink:0}}>
+                      <p style={{fontSize:10,fontWeight:600,color:'var(--ink3)',textTransform:'uppercase',letterSpacing:0.5}}>{d.toLocaleDateString('it-IT',{weekday:'short'})}</p>
+                      <p style={{fontSize:22,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)',lineHeight:1.1}}>{d.getDate()}</p>
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <p style={{fontSize:14,fontWeight:600,color:'var(--ink)'}}>{b.service_name}</p>
+                      <p style={{fontSize:12,color:'var(--ink3)'}}>{(b.time||'').slice(0,5)} · {st?.name}</p>
+                    </div>
+                    <span className={`badge ${b.status==='confirmed'?'badge-green':'badge-gold'}`}>{b.status==='confirmed'?'Confermata':'In attesa'}</span>
+                  </div>); })}
+              </div>
+            )}
+
+            {last && lastStaff && (
+              <button onClick={() => onRebook && onRebook(last)} className="card" style={{width:'100%',display:'flex',alignItems:'center',gap:14,marginBottom:28,textAlign:'left',padding:16}}>
+                <div className="avatar" style={{width:44,height:44,fontSize:15,background:lastStaff.color,color:'white'}}>{lastStaff.initials}</div>
+                <div style={{flex:1}}>
+                  <p style={{fontSize:11,fontWeight:600,color:'var(--ink3)',textTransform:'uppercase',letterSpacing:0.5}}>Prenota di nuovo</p>
+                  <p style={{fontSize:15,fontWeight:600,color:'var(--ink)'}}>{last.service_name} con {lastStaff.name}</p>
+                </div>
+                <span style={{fontSize:20,color:'var(--gold)'}}>→</span>
+              </button>
+            )}
+
+          </>);
+        })()}
 
       </div>
     </div>
@@ -973,7 +1035,7 @@ function UserHome({ user, profile, bookings, setTab, staff, services }) {
 }
 
 // ── BOOKING FLOW ────────────────────────────────────────────────
-function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, setTab, schedules, dayBlocks, dayOverrides }) {
+function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, setTab, schedules, dayBlocks, dayOverrides, rebook, onRebookUsed }) {
   const [step, setStep]                   = useState(0);
   const [selectedServices, setSel]        = useState([]);
   const [selectedStaff, setSelectedStaff] = useState(null);
@@ -986,6 +1048,28 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
   const [bookingNotes, setBookingNotes]   = useState('');
   const weekDates = getWeekDates(weekOffset);
   const totalDuration = selectedServices.reduce((a,s)=>a+s.duration,0);
+  const totalPrice    = selectedServices.reduce((a,s)=>a+Number(s.price||0),0);
+
+  // "Prenota di nuovo": precompila servizi e barbiere dall'ultimo appuntamento
+  useEffect(() => {
+    if (!rebook) return;
+    const names = (rebook.service_name || '').split(' + ');
+    const svc = names.map(n => services.find(s => s.name === n)).filter(Boolean);
+    const st = staff.find(s => s.id === rebook.staff_id && s.active !== false);
+    if (svc.length && svc.length === names.length) {
+      setSel(svc); setTime(null); setDate(null);
+      if (st) { setSelectedStaff(st); setStep(2); } else setStep(1);
+    }
+    onRebookUsed && onRebookUsed();
+  }, [rebook]);
+
+  // Preseleziona il primo giorno aperto (oggi, se il salone è aperto)
+  useEffect(() => {
+    if (step !== 2 || !selectedStaff) return;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const ok = (d) => d >= today && !isDayClosed(selectedStaff.id, d, schedules, dayOverrides);
+    if (!ok(weekDates[selectedDay])) { const i = weekDates.findIndex(ok); if (i >= 0) setSelectedDay(i); }
+  }, [step, weekOffset, selectedStaff?.id]);
 
   const toggleService = (s) => {
     setSel(prev => prev.find(p=>p.id===s.id) ? prev.filter(p=>p.id!==s.id) : [...prev,s]);
@@ -1035,7 +1119,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
           <div style={{flex:1}}>
             <h2 style={{fontSize:20,fontWeight:700,color:'var(--ink)',letterSpacing:-0.3}}>{steps[step]}</h2>
             {step===0&&selectedServices.length>0&&(
-              <p style={{fontSize:11,color:'var(--gold)',fontWeight:600,marginTop:2}}>{selectedServices.length} selezionati · {totalDuration} min</p>
+              <p style={{fontSize:11,color:'var(--gold)',fontWeight:600,marginTop:2}}>{selectedServices.length} {selectedServices.length===1?'selezionato':'selezionati'} · {totalDuration} min</p>
             )}
           </div>
         </div>
@@ -1066,7 +1150,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
                     </div>
                     <div style={{flex:1}}>
                       <p style={{fontSize:15,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",color:isSel?'white':'var(--ink)'}}>{s.name}</p>
-                      <p style={{fontSize:12,color:isSel?'rgba(255,255,255,0.55)':'var(--ink3)',marginTop:2}}>{s.duration} min{s.price?` · €${Number(s.price).toFixed(2)}`:''}</p>
+                      <p style={{fontSize:12,color:isSel?'rgba(255,255,255,0.55)':'var(--ink3)',marginTop:2}}>{s.duration} min{s.price?` · ${Number(s.price).toLocaleString('it-IT',{style:'currency',currency:'EUR'})}`:''}</p>
                     </div>
                   </button>
                 );
@@ -1150,30 +1234,41 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
                 );
               })}
             </div>
-            <p style={{fontSize:12,fontWeight:600,color:'var(--ink2)',marginBottom:10,textTransform:'uppercase',letterSpacing:0.5}}>Orari disponibili</p>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:24}}>
-              {ALL_SLOTS.map(h => {
-                const dStr=toLocalDate(weekDates[selectedDay]);
-                const now=new Date();
-                const isToday=weekDates[selectedDay].toDateString()===now.toDateString();
-                const [hh,mm]=h.split(':').map(Number);
-                const isPastTime=isToday&&(hh*60+mm)<=(now.getHours()*60+now.getMinutes());
-                const avail=!isPastTime&&checkSlot(dStr,h,selectedStaff.id,totalDuration,bookings,schedules,dayBlocks,dayOverrides);
-                const isSel=time===h&&date===dStr;
-                return (
-                  <button key={h} disabled={!avail} onClick={()=>{setTime(h);setDate(dStr);}}
-                    style={{padding:'12px 8px',borderRadius:10,border:'1.5px solid',textAlign:'center',
-                      fontSize:15,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",
-                      background:isSel?'var(--ink)':avail?'oklch(93% 0.07 145)':'oklch(94% 0.04 15)',
-                      color:isSel?'white':avail?'oklch(32% 0.14 145)':'oklch(45% 0.1 15)',
-                      borderColor:isSel?'var(--ink)':avail?'oklch(76% 0.11 145)':'oklch(82% 0.07 15)',
-                      cursor:!avail?'not-allowed':'pointer',transition:'all 0.15s'}}>
-                    {h}
-                  </button>
-                );
-              })}
-            </div>
-            {date&&time&&<button className="btn-primary" onClick={()=>setStep(3)}>Continua →</button>}
+            {(() => {
+              const day = weekDates[selectedDay];
+              const dStr = toLocalDate(day);
+              const now = new Date();
+              const isToday = day.toDateString() === now.toDateString();
+              const nowMin = now.getHours()*60 + now.getMinutes();
+              // Solo gli orari dentro l'orario di lavoro; occupati e passati restano visibili ma spenti
+              const slots = ALL_SLOTS
+                .filter(h => checkSlot(dStr, h, selectedStaff.id, totalDuration, [], schedules, dayBlocks, dayOverrides))
+                .map(h => { const [hh,mm] = h.split(':').map(Number);
+                  const past = isToday && hh*60+mm <= nowMin;
+                  return { h, free: !past && checkSlot(dStr, h, selectedStaff.id, totalDuration, bookings, schedules, dayBlocks, dayOverrides) }; });
+              const free = slots.filter(x => x.free).length;
+              const label = day.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+              return (<>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:14}}>
+                  <h3 style={{fontSize:19,fontWeight:700,color:'var(--ink)'}}>{label.charAt(0).toUpperCase()+label.slice(1)}</h3>
+                  <span style={{fontSize:12,fontWeight:600,color:free?'oklch(45% 0.12 145)':'var(--ink3)'}}>{free ? `${free} orari liberi` : 'Nessun orario libero'}</span>
+                </div>
+                {[['Mattina', slots.filter(x => x.h < '13:00')], ['Pomeriggio', slots.filter(x => x.h >= '13:00')]].filter(([,g]) => g.length).map(([lab, g]) => (
+                  <div key={lab} style={{marginBottom:18}}>
+                    <p style={{fontSize:11,fontWeight:600,color:'var(--ink3)',textTransform:'uppercase',letterSpacing:0.6,marginBottom:8}}>{lab}</p>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
+                      {g.map(({h, free}) => (
+                        <button key={h} disabled={!free} className={`slot${time===h&&date===dStr?' sel':''}`} onClick={()=>{setTime(h);setDate(dStr);}}>{h}</button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {slots.length === 0 && <p style={{fontSize:13,color:'var(--ink3)',textAlign:'center',padding:'24px 0'}}>Il salone è chiuso in questo giorno</p>}
+              </>);
+            })()}
+            {date&&time&&<div style={{position:'sticky',bottom:0,paddingTop:16,paddingBottom:4,background:'linear-gradient(to bottom, transparent, var(--bg) 35%)'}}>
+              <button className="btn-primary" onClick={()=>setStep(3)}>Continua · {time} →</button>
+            </div>}
           </>
         )}
 
@@ -1196,6 +1291,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
                 ['Data',     new Date(date).toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})],
                 ['Orario',   time],
                 ['Durata',   `${totalDuration} min`],
+                ['Totale',   totalPrice.toLocaleString('it-IT',{style:'currency',currency:'EUR'})],
               ].map(([k,v])=>(
                 <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
                   <span style={{fontSize:12,color:'rgba(255,255,255,0.5)',textTransform:'uppercase',letterSpacing:0.4,fontWeight:600}}>{k}</span>
@@ -1211,7 +1307,7 @@ function BookingFlow({ profile, bookings, onBooked, setToast, staff, services, s
                 padding:'12px 14px',fontSize:14,color:'var(--ink)',fontFamily:"'Jost',sans-serif",
                 resize:'none',outline:'none',marginBottom:16,lineHeight:1.5}}
             />
-            <p style={{fontSize:12,color:'var(--ink3)',textAlign:'center',marginBottom:20}}>La prenotazione sarà confermata dal barbiere entro 24h</p>
+            <p style={{fontSize:12,color:'var(--ink3)',textAlign:'center',marginBottom:20}}>Riceverai una notifica appena il barbiere conferma</p>
             <button className="btn-gold" style={{opacity:busy?0.6:1}} disabled={busy} onClick={confirm}>
               {busy?'Invio...':'Conferma Prenotazione'}
             </button>
@@ -1244,8 +1340,13 @@ function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
 
   const cancel = async (id) => {
     if (!window.confirm('Vuoi annullare questo appuntamento?')) return;
-    const { error } = await supabase.from('bookings').update({ status:'cancelled' }).eq('id',id);
+    // .select(): se il server rifiuta (es. mancano meno di 2 ore) non torna nessuna riga e nessun errore
+    const { data, error } = await supabase.from('bookings').update({ status:'cancelled' }).eq('id',id).select('id');
     if (error) { setToast('Errore: '+error.message); return; }
+    if (!data || data.length === 0) {
+      setToast('Non è più possibile annullare: mancano meno di 2 ore');
+      onRefresh(); return;
+    }
     notifyPush(id, 'cancelled_by_client');
     setToast('Prenotazione annullata');
     onRefresh();
@@ -1294,16 +1395,17 @@ function UserCalendar({ profile, bookings, onRefresh, setToast, staff }) {
         )}
         {dayBookings.filter(b=>b.status!=='cancelled').map(b=>{
           const s=staff.find(st=>st.id===b.staff_id);
+          const past=new Date(`${b.date}T${b.time}`)<new Date();
           return(
-            <div key={b.id} className="card" style={{marginBottom:12}}>
+            <div key={b.id} className="card" style={{marginBottom:12,opacity:past?0.6:1}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
                 <div>
                   <p style={{fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>{b.service_name}</p>
                   <p style={{fontSize:12,color:'var(--ink3)',marginTop:2}}>{new Date(b.date).toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'long'})}</p>
                   <p style={{fontSize:17,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)',marginTop:2}}>{b.time?.slice(0,5)}</p>
                 </div>
-                <span className={`badge ${b.status==='confirmed'?'badge-green':'badge-gold'}`}>
-                  {b.status==='confirmed'?'✓ Confermata':'◌ In attesa'}
+                <span className={`badge ${past?'badge-gray':b.status==='confirmed'?'badge-green':'badge-gold'}`}>
+                  {past?'Completato':b.status==='confirmed'?'✓ Confermata':'◌ In attesa'}
                 </span>
               </div>
               {s&&(
@@ -1453,12 +1555,20 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
   const [editEarnings, setEditEarnings]   = useState(booking.earnings != null ? String(booking.earnings) : '');
   const weekDates = getWeekDates(weekOffset);
 
+  // Preseleziona il primo giorno aperto della settimana mostrata
+  useEffect(() => {
+    if (mode !== 'reschedule') return;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const ok = d => d >= today && !isDayClosed(newStaff, d, schedules, dayOverrides);
+    if (!ok(weekDates[selectedDay])) { const i = weekDates.findIndex(ok); if (i >= 0) setSelectedDay(i); }
+  }, [mode, weekOffset, newStaff]);
+
   const confirmReschedule = async () => {
     const dateStr=toLocalDate(weekDates[selectedDay]);
     if (!newTime) return;
     setBusy(true);
     // reminder_sent torna false: il cliente riceverà il promemoria per il nuovo orario
-    const { error } = await supabase.from('bookings').update({ date:dateStr, time:newTime, staff_id:newStaff, status:'confirmed', reminder_sent:false }).eq('id',booking.id);
+    const { error } = await supabase.from('bookings').update({ date:dateStr, time:newTime, staff_id:newStaff, status:'confirmed', reminder_sent:false, reminder_push_sent:false }).eq('id',booking.id);
     setBusy(false);
     if (error) { setToast && setToast('Errore: '+error.message); return; }
     notifyPush(booking.id, 'moved');
@@ -1466,6 +1576,7 @@ function BookingActionModal({ booking, bookings, onSave, onClose, staff, service
   };
 
   const cancelBooking = async () => {
+    if (!window.confirm("Annullare l'appuntamento? Il cliente riceverà una notifica.")) return;
     setBusy(true);
     const { error } = await supabase.from('bookings').update({ status:'cancelled' }).eq('id',booking.id);
     setBusy(false);
@@ -1700,6 +1811,14 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
   const [showPicker, setShowPicker] = useState(false);
   const [busy, setBusy]           = useState(false);
   const weekDates = getWeekDates(weekOffset);
+
+  // Preseleziona il primo giorno aperto della settimana mostrata
+  useEffect(() => {
+    if (!selectedStaff) return;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const ok = d => d >= today && !isDayClosed(selectedStaff.id, d, schedules, dayOverrides);
+    if (!ok(weekDates[selectedDay])) { const i = weekDates.findIndex(ok); if (i >= 0) setSelectedDay(i); }
+  }, [weekOffset, selectedStaff?.id]);
   const totalDuration = selectedServices.reduce((a,s)=>a+s.duration, 0);
 
   const toggleService = (s) => {
@@ -1791,7 +1910,7 @@ function AdminManualBooking({ staff, services, bookings, onBooked, setToast, onC
                     </div>
                     <div style={{flex:1}}>
                       <p style={{fontSize:15,fontWeight:600,fontFamily:"'Cormorant Garamond',serif",color:isSel?'white':'var(--ink)'}}>{s.name}</p>
-                      <p style={{fontSize:12,color:isSel?'rgba(255,255,255,0.55)':'var(--ink3)',marginTop:2}}>{s.duration} min{s.price?` · €${Number(s.price).toFixed(2)}`:''}</p>
+                      <p style={{fontSize:12,color:isSel?'rgba(255,255,255,0.55)':'var(--ink3)',marginTop:2}}>{s.duration} min{s.price?` · ${Number(s.price).toLocaleString('it-IT',{style:'currency',currency:'EUR'})}`:''}</p>
                     </div>
                   </button>
                 );
@@ -1928,7 +2047,9 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
     setToast('✓ Prenotazione accettata'); onRefresh();
   };
   const reject = async (id) => {
-    await supabase.from('bookings').update({status:'cancelled'}).eq('id',id);
+    if (!window.confirm('Rifiutare la prenotazione? Il cliente riceverà una notifica.')) return;
+    const { error } = await supabase.from('bookings').update({status:'cancelled'}).eq('id',id);
+    if (error) { setToast('Errore: '+error.message); return; }
     notifyPush(id, 'cancelled_by_staff');
     setToast('Prenotazione rifiutata'); onRefresh();
   };
@@ -1999,8 +2120,9 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
           ? <p style={{fontSize:13,color:'var(--ink3)',textAlign:'center',padding:'20px 0'}}>Nessun appuntamento oggi</p>
           : todayBks.sort((a,b)=>(a.time||'00:00').localeCompare(b.time||'00:00')).map(b=>{
             const s=staff.find(st=>st.id===b.staff_id);
+            const past=new Date(`${b.date}T${b.time}`)<new Date();
             return(
-              <div key={b.id} style={{display:'flex',gap:12,alignItems:'center',padding:'12px 0',borderBottom:'1px solid var(--border)'}}>
+              <div key={b.id} style={{display:'flex',gap:12,alignItems:'center',padding:'12px 0',borderBottom:'1px solid var(--border)',opacity:past?0.45:1}}>
                 <div style={{width:44,textAlign:'right',flexShrink:0}}>
                   <p style={{fontSize:13,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",color:'var(--ink)'}}>{b.time?.slice(0,5)}</p>
                 </div>
@@ -2009,6 +2131,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
                   <p style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{b.client_name}</p>
                   <p style={{fontSize:11,color:'var(--ink3)'}}>{b.service_name} · {s?.name}</p>
                 </div>
+                {b.status==='pending'&&<span className="badge badge-gold">In attesa</span>}
               </div>
             );
           })
@@ -2028,7 +2151,7 @@ function AdminDash({ bookings, onRefresh, setToast, staff, services, schedules, 
 // ── ADMIN CALENDAR ───────────────────────────────────────────────
 function AdminCalendar({ bookings, onRefresh, setToast, staff, services, schedules, dayBlocks, dayOverrides }) {
   const [weekOffset, setWeekOffset] = useState(0);
-  const [selectedDay, setSelectedDay] = useState(0);
+  const [selectedDay, setSelectedDay] = useState(() => (new Date().getDay() + 6) % 7);
   const [showPicker, setShowPicker] = useState(false);
   const [activeBooking, setActiveBooking] = useState(null);
   const weekDates = getWeekDates(weekOffset);
@@ -2819,7 +2942,7 @@ function AdminStaff({ bookings, schedules, setSchedules, dayBlocks, setDayBlocks
               <div key={s.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',background:'var(--bg2)',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',marginBottom:10}}>
                 <div>
                   <p style={{fontSize:14,fontWeight:600,color:'var(--ink)'}}>{s.name}</p>
-                  <p style={{fontSize:12,color:'var(--ink3)'}}>{s.duration} min{s.price?` · €${Number(s.price).toFixed(2)}`:''}</p>
+                  <p style={{fontSize:12,color:'var(--ink3)'}}>{s.duration} min{s.price?` · ${Number(s.price).toLocaleString('it-IT',{style:'currency',currency:'EUR'})}`:''}</p>
                 </div>
                 <div style={{display:'flex',gap:8}}>
                   <button onClick={()=>{setEditSvc(s.id);setDraftService({...s});}}
@@ -3019,6 +3142,7 @@ function App() {
   const [loading, setLoading]     = useState(true);
   const [dataLoading, setDataLoad]= useState(false);
   const [tab, setTab]             = useState('home');
+  const [rebook, setRebook]       = useState(null); // "Prenota di nuovo" dalla Home
   const [staff, setStaff]         = useState([]);
   const [services, setServices]   = useState([]);
   const [bookings, setBookings]   = useState([]);
@@ -3263,8 +3387,8 @@ function App() {
     'admin-history': <AdminHistory bookings={bookings} staff={staff} />,
     'admin-account': <AdminAccount profile={profile} onLogout={handleLogout} />,
   } : {
-    'home':     <UserHome     user={authUser} profile={profile} bookings={bookings} setTab={setTab} staff={staff} services={services} />,
-    'booking':  <BookingFlow  profile={profile} bookings={busySlots} onBooked={loadAppData} setToast={setToast} staff={staff} services={services} setTab={setTab} schedules={schedules} dayBlocks={dayBlocks} dayOverrides={dayOverrides} />,
+    'home':     <UserHome     user={authUser} profile={profile} bookings={bookings} setTab={setTab} staff={staff} services={services} onRebook={b => { setRebook(b); setTab('booking'); }} />,
+    'booking':  <BookingFlow  profile={profile} bookings={busySlots} onBooked={loadAppData} setToast={setToast} staff={staff} services={services} setTab={setTab} schedules={schedules} dayBlocks={dayBlocks} dayOverrides={dayOverrides} rebook={rebook} onRebookUsed={() => setRebook(null)} />,
     'calendar': <UserCalendar profile={profile} bookings={bookings} onRefresh={loadAppData} setToast={setToast} staff={staff} />,
     'profile':  <UserProfile  profile={profile} bookings={bookings} onLogout={handleLogout} />,
   };
